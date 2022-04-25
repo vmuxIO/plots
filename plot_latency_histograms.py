@@ -26,6 +26,13 @@ avg_phy = np.average(data_phy[:,0], weights=weights_phy)
 avg_brtap = np.average(data_brtap[:,0], weights=weights_brtap)
 avg_macvtap = np.average(data_macvtap[:,0], weights=weights_macvtap)
 
+def stddev(data, weights):
+    return np.sqrt(np.average((data - np.average(data, weights=weights))**2, weights=weights))
+
+stddev_phy = stddev(data_phy[:,0], weights=weights_phy)
+stddev_brtap = stddev(data_brtap[:,0], weights=weights_brtap)
+stddev_macvtap = stddev(data_macvtap[:,0], weights=weights_macvtap)
+
 bins = 300
 
 fig = plt.figure(figsize=(12,6))
@@ -76,23 +83,54 @@ plt.hist(
 plt.axvline(
     x=avg_phy,
     color='#880000',
-    linestyle='dotted',
     linewidth=1.0,
     label=f'Average for Physical Intel 82599ES NIC: {avg_phy:.2f} ms',
 )
 plt.axvline(
     x=avg_brtap,
     color='#008800',
-    linestyle='dotted',
     linewidth=1.0,
     label=f'Average for Bridged TAP virtio-net-pci Device: {avg_brtap:.2f} ms',
 )
 plt.axvline(
     x=avg_macvtap,
     color='#000088',
-    linestyle='dotted',
     linewidth=1.0,
     label=f'Average for MacVTap virtio-net-pci Device: {avg_macvtap:.2f} ms',
+)
+
+plt.errorbar(
+    avg_phy,
+    0.5,
+    xerr=stddev_phy,
+    fmt='o',
+    color='#880000',
+    markersize=0,
+    capsize=5,
+    capthick=1,
+    label=f'Std. Dev. for Physical Intel 82599ES NIC: {stddev_phy:.2f} ms',
+)
+plt.errorbar(
+    avg_brtap,
+    0.5,
+    xerr=stddev_brtap,
+    fmt='o',
+    color='#008800',
+    markersize=0,
+    capsize=5,
+    capthick=1,
+    label=f'Std. Dev. for Bridged TAP virtio-net-pci Device: {stddev_brtap:.2f} ms',
+)
+plt.errorbar(
+    avg_macvtap,
+    0.5,
+    xerr=stddev_macvtap,
+    fmt='o',
+    color='#000088',
+    markersize=0,
+    capsize=5,
+    capthick=1,
+    label=f'Std. Dev. for MacVTap virtio-net-pci Device: {stddev_macvtap:.2f} ms',
 )
 
 legend = plt.legend()

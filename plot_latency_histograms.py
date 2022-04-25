@@ -22,6 +22,10 @@ weights_phy = np.ones_like(data_phy[:,1]) / len(data_phy[:,0])
 weights_brtap = np.ones_like(data_brtap[:,1]) / len(data_brtap[:,0])
 weights_macvtap = np.ones_like(data_macvtap[:,1]) / len(data_macvtap[:,0])
 
+avg_phy = np.average(data_phy[:,0], weights=weights_phy)
+avg_brtap = np.average(data_brtap[:,0], weights=weights_brtap)
+avg_macvtap = np.average(data_macvtap[:,0], weights=weights_macvtap)
+
 bins = 300
 
 fig = plt.figure(figsize=(12,6))
@@ -45,6 +49,7 @@ plt.hist(
     bins=bins,
     linewidth=0.5,
     edgecolor='black',
+    facecolor='#ff5555',
     label='Physical Intel 82599ES NIC',
 )
 plt.hist(
@@ -54,6 +59,7 @@ plt.hist(
     bins=bins,
     linewidth=0.5,
     edgecolor='black',
+    facecolor='#55ff55',
     label='Bridged TAP virtio-net-pci Device',
 )
 plt.hist(
@@ -63,7 +69,30 @@ plt.hist(
     bins=bins,
     linewidth=0.5,
     edgecolor='black',
+    facecolor='#5555ff',
     label='MacVTap virtio-net-pci Device',
+)
+
+plt.axvline(
+    x=avg_phy,
+    color='#880000',
+    linestyle='dotted',
+    linewidth=1.0,
+    label=f'Average for Physical Intel 82599ES NIC: {avg_phy:.2f} ms',
+)
+plt.axvline(
+    x=avg_brtap,
+    color='#008800',
+    linestyle='dotted',
+    linewidth=1.0,
+    label=f'Average for Bridged TAP virtio-net-pci Device: {avg_brtap:.2f} ms',
+)
+plt.axvline(
+    x=avg_macvtap,
+    color='#000088',
+    linestyle='dotted',
+    linewidth=1.0,
+    label=f'Average for MacVTap virtio-net-pci Device: {avg_macvtap:.2f} ms',
 )
 
 legend = plt.legend()

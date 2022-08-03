@@ -1,139 +1,238 @@
 #!/usr/bin/env python3
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 
-data_phy = np.genfromtxt('data/phy-hist.csv', delimiter=',')
-data_brtap = np.genfromtxt('data/br-tap-hist.csv', delimiter=',')
-data_macvtap = np.genfromtxt('data/macvtap-hist.csv', delimiter=',')
 
-data_phy[:,0] = data_phy[:,0] / 1000000.
-data_brtap[:,0] = data_brtap[:,0] / 1000000.
-data_macvtap[:,0] = data_macvtap[:,0] / 1000000.
+def lighten_color(color, amount=0.5):
+    """
+    Lightens the given color by multiplying (1-luminosity) by the given amount.
+    Input can be matplotlib color string, hex string, or RGB tuple.
 
-xmin = 0.
-xmax = 1.1 * max(max(data_phy[:,0]), max(data_brtap[:,0]), max(data_macvtap[:,0]))
-histrange = (xmin, xmax)
+    Examples:
+    >> lighten_color('g', 0.3)
+    >> lighten_color('#F034A3', 0.6)
+    >> lighten_color((.3,.55,.1), 0.5)
+    """
+    import matplotlib.colors as mc
+    import colorsys
+    try:
+        c = mc.cnames[color]
+    except Exception:
+        c = color
+    c = np.array(colorsys.rgb_to_hls(*mc.to_rgb(c)))
 
-size_phy = int(sum(data_phy[:,1]))
-size_brtap = int(sum(data_brtap[:,1]))
-size_macvtap = int(sum(data_macvtap[:,1]))
+    return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
 
-weights_phy = np.ones_like(data_phy[:,1]) / len(data_phy[:,0])
-weights_brtap = np.ones_like(data_brtap[:,1]) / len(data_brtap[:,0])
-weights_macvtap = np.ones_like(data_macvtap[:,1]) / len(data_macvtap[:,0])
-
-avg_phy = np.average(data_phy[:,0], weights=weights_phy)
-avg_brtap = np.average(data_brtap[:,0], weights=weights_brtap)
-avg_macvtap = np.average(data_macvtap[:,0], weights=weights_macvtap)
 
 def stddev(data, weights):
-    return np.sqrt(np.average((data - np.average(data, weights=weights))**2, weights=weights))
+    return np.sqrt(np.average((data - np.average(data, weights=weights))**2,
+                              weights=weights))
 
-stddev_phy = stddev(data_phy[:,0], weights=weights_phy)
-stddev_brtap = stddev(data_brtap[:,0], weights=weights_brtap)
-stddev_macvtap = stddev(data_macvtap[:,0], weights=weights_macvtap)
 
-bins = 300
+class DarkColorPalette(object):
+    _colors = [
+        'darkred',
+        'saddlebrown',
+        'darkorange',
+        'darkgoldenrod',
+        'darkolivegreen',
+        'darkseagreen',
+        'darkgreen',
+        'darkslategray',
+        'steelblue',
+        'darkblue',
+        'darkslateblue',
+        'indigo',
+        'darkmagenta',
+    ]
+    _index = 0
 
-fig = plt.figure(figsize=(12,6))
-ax = fig.add_subplot(1,1,1)
-ax.set_axisbelow(True)
-plt.title('Latency Histogram for different Network Interfaces')
-plt.xlabel('Latency (ms)')
-plt.ylabel('Frequency')
+    def __init__(self, seed):
+        random.Random(seed).shuffle(self._colors)
 
-ax.set_xticks(np.arange(xmin, xmax, 1.0))
-ax.set_xticks(np.arange(xmin, xmax, 0.25), minor=True)
-ax.set_yticks(np.arange(0., 1.1, 0.1))
-ax.set_yticks(np.arange(0., 1.1, 0.025), minor=True)
-plt.grid(which='major', alpha=0.5, linestyle='dotted', linewidth=0.5)
-plt.grid(which='minor', alpha=0.2, linestyle='dotted', linewidth=0.5)
+    def pull(self):
+        color = self._colors[self._index]
+        self._index += 1
+        self._index %= len(self._colors)
+        return color
 
-plt.hist(
-    data_phy[:,0],
-    range=histrange,
-    weights=weights_phy,
-    bins=bins,
-    linewidth=0.5,
-    edgecolor='black',
-    facecolor='#ff5555',
-    label='Physical Intel 82599ES NIC',
-)
-plt.hist(
-    data_brtap[:,0],
-    range=histrange,
-    weights=weights_brtap,
-    bins=bins,
-    linewidth=0.5,
-    edgecolor='black',
-    facecolor='#55ff55',
-    label='Bridged TAP virtio-net-pci Device',
-)
-plt.hist(
-    data_macvtap[:,0],
-    range=histrange,
-    weights=weights_macvtap,
-    bins=bins,
-    linewidth=0.5,
-    edgecolor='black',
-    facecolor='#5555ff',
-    label='MacVTap virtio-net-pci Device',
-)
 
-plt.axvline(
-    x=avg_phy,
-    color='#880000',
-    linewidth=1.0,
-    label=f'Average for Physical Intel 82599ES NIC: {avg_phy:.2f} ms',
-)
-plt.axvline(
-    x=avg_brtap,
-    color='#008800',
-    linewidth=1.0,
-    label=f'Average for Bridged TAP virtio-net-pci Device: {avg_brtap:.2f} ms',
-)
-plt.axvline(
-    x=avg_macvtap,
-    color='#000088',
-    linewidth=1.0,
-    label=f'Average for MacVTap virtio-net-pci Device: {avg_macvtap:.2f} ms',
-)
+class LatencyHistogram(object):
+    _filepath = None
+    _description = None
+    _histogram_color = None
+    _avxline_color = None
+    _errorbar_color = None
 
-plt.errorbar(
-    avg_phy,
-    0.5,
-    xerr=stddev_phy,
-    fmt='o',
-    color='#880000',
-    markersize=0,
-    capsize=5,
-    capthick=1,
-    label=f'Std. Dev. for Physical Intel 82599ES NIC: {stddev_phy:.2f} ms',
-)
-plt.errorbar(
-    avg_brtap,
-    0.5,
-    xerr=stddev_brtap,
-    fmt='o',
-    color='#008800',
-    markersize=0,
-    capsize=5,
-    capthick=1,
-    label=f'Std. Dev. for Bridged TAP virtio-net-pci Device: {stddev_brtap:.2f} ms',
-)
-plt.errorbar(
-    avg_macvtap,
-    0.5,
-    xerr=stddev_macvtap,
-    fmt='o',
-    color='#000088',
-    markersize=0,
-    capsize=5,
-    capthick=1,
-    label=f'Std. Dev. for MacVTap virtio-net-pci Device: {stddev_macvtap:.2f} ms',
-)
+    _data = None
+    _xmax = None
+    _size = None
+    _weights = None
+    _average = None
+    _stddev = None
 
-legend = plt.legend()
-legend.get_frame().set_facecolor('white')
-legend.get_frame().set_alpha(0.8)
-plt.savefig('plots/latency-histogram.pdf')
+    def __init__(self,
+                 filepath,
+                 description,
+                 histogram_color,
+                 avxline_color,
+                 errorbar_color):
+        self._filepath = filepath
+        self._description = description
+        self._histogram_color = histogram_color
+        self._avxline_color = avxline_color
+        self._errorbar_color = errorbar_color
+
+        self._data = np.genfromtxt(self._filepath, delimiter=',')
+        self._data[:, 0] /= 1e6
+        self._xmax = max(self._data[:, 0])
+        self._size = int(sum(self._data[:, 1]))
+        self._weights = np.ones_like(self._data[:, 1]) / len(self._data[:, 0])
+        self._average = np.average(self._data[:, 0], weights=self._weights)
+        self._stddev = stddev(self._data[:, 0], self._weights)
+
+    def filepath(self):
+        return self._filepath
+
+    def description(self):
+        return self._description
+
+    def histogram_color(self):
+        return self._histogram_color
+
+    def avxline_color(self):
+        return self._avxline_color
+
+    def errorbar_color(self):
+        return self._errorbar_color
+
+    def data(self):
+        return self._data
+
+    def xmax(self):
+        return self._xmax
+
+    def size(self):
+        return self._size
+
+    def weights(self):
+        return self._weights
+
+    def average(self):
+        return self._average
+
+    def stddev(self):
+        return self._stddev
+
+
+class LatencyHistogramPlot(object):
+    _latency_histograms = None
+    _color_palette = DarkColorPalette(0)
+
+    _xmin = 0.
+    _xmax = None
+    _histrange = None
+
+    _bins = 300
+
+    _fig = None
+    _ax = None
+
+    def __init__(self, filepaths, descriptions):
+        assert len(filepaths) == len(descriptions)
+
+        self._latency_histograms = []
+        for filepath, description in zip(filepaths, descriptions):
+            histogram_color = self._color_palette.pull()
+            avxline_color = lighten_color(histogram_color, amount=0.5)
+            errorbar_color = lighten_color(histogram_color, amount=0.75)
+            self._latency_histograms.append(
+                LatencyHistogram(
+                    filepath,
+                    description,
+                    histogram_color,
+                    avxline_color,
+                    errorbar_color
+                )
+            )
+        self._xmax = 1.1 * max(
+            [hist.xmax() for hist in self._latency_histograms]
+        )
+        self._histrange = (self._xmin, self._xmax)
+
+    def plot(self, output_filepath):
+        self._fig = plt.figure(figsize=(12, 6))
+        self._ax = self._fig.add_subplot(1, 1, 1)
+        self._ax.set_axisbelow(True)
+        plt.title('Latency Histogram for different Network Interfaces')
+        plt.xlabel('Latency (ms)')
+        plt.ylabel('Frequency')
+
+        self._ax.set_xticks(np.arange(self._xmin, self._xmax, 1.0))
+        self._ax.set_xticks(np.arange(self._xmin, self._xmax, 0.25),
+                            minor=True)
+        self._ax.set_yticks(np.arange(0., 1.1, 0.1))
+        self._ax.set_yticks(np.arange(0., 1.1, 0.025), minor=True)
+        plt.grid(which='major', alpha=0.5, linestyle='dotted', linewidth=0.5)
+        plt.grid(which='minor', alpha=0.2, linestyle='dotted', linewidth=0.5)
+
+        for hist in self._latency_histograms:
+            plt.hist(
+                hist.data()[:,0],
+                range=self._histrange,
+                weights=hist.weights(),
+                bins=self._bins,
+                linewidth=0.5,
+                edgecolor='black',
+                facecolor=hist.histogram_color(),
+                label=hist.description(),
+            )
+
+        for hist in self._latency_histograms:
+            plt.axvline(
+                x=hist.average(),
+                color=hist.avxline_color(),
+                linewidth=1.0,
+                label=(f'Average for {hist.description()}: ' +
+                       f'{hist.average():.2f} ms'),
+            )
+
+        for hist in self._latency_histograms:
+            plt.errorbar(
+                hist.average(),
+                0.5,
+                xerr=hist.stddev(),
+                fmt='o',
+                color=hist.errorbar_color(),
+                markersize=0,
+                capsize=5,
+                capthick=1,
+                label=(f'Std. Dev. for {hist.description()}: ' +
+                       f'{hist.stddev():.2f} ms'),
+            )
+
+        legend = plt.legend()
+        legend.get_frame().set_facecolor('white')
+        legend.get_frame().set_alpha(0.8)
+        plt.savefig(output_filepath)
+        plt.close()
+
+
+def main():
+    files = [
+        'data/phy-hist.csv',
+        'data/br-tap-hist.csv',
+        'data/macvtap-hist.csv',
+    ]
+    descriptions = [
+        'physical NIC',
+        'bridge TAP',
+        'MacVTAP',
+    ]
+    plot = LatencyHistogramPlot(files, descriptions)
+    plot.plot('plots/latency-histogram.pdf')
+
+
+if __name__ == '__main__':
+    main()

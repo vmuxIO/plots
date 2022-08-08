@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+import argparse
 
 
 def lighten_color(color, amount=0.5):
@@ -128,7 +129,7 @@ class LatencyHistogram(object):
 
 class LatencyHistogramPlot(object):
     _latency_histograms = None
-    _color_palette = DarkColorPalette(0)
+    _color_palette = DarkColorPalette(1)
 
     _xmin = 0.
     _xmax = None
@@ -219,19 +220,47 @@ class LatencyHistogramPlot(object):
         plt.close()
 
 
+def setup_parser():
+    parser = argparse.ArgumentParser(
+        description='Plot latency histograms for different network interfaces'
+    )
+
+    parser.add_argument('-o', '--output',
+                        type=argparse.FileType('w+'),
+                        help='''Path to the output plot
+                             (default: latency_histogram.pdf)''',
+                        default='latency_histograms.pdf'
+                        )
+    parser.add_argument('-f', '--files',
+                        action='append',
+                        type=argparse.FileType('r'),
+                        help='Paths to latency histogram CSVs',
+                        required=True,
+                        )
+    parser.add_argument('-d', '--descriptions',
+                        action='append',
+                        type=str,
+                        help='Descriptions for latency histograms',
+                        required=True,
+                        )
+
+    return parser
+
+
+def parse_args(parser):
+    args = parser.parse_args()
+
+    assert len(args.files) == len(args.descriptions)
+
+    return args
+
+
 def main():
-    files = [
-        'data/phy-hist.csv',
-        'data/br-tap-hist.csv',
-        'data/macvtap-hist.csv',
-    ]
-    descriptions = [
-        'physical NIC',
-        'bridge TAP',
-        'MacVTAP',
-    ]
-    plot = LatencyHistogramPlot(files, descriptions)
-    plot.plot('plots/latency-histogram.pdf')
+    parser = setup_parser()
+    args = parse_args(parser)
+
+    plot = LatencyHistogramPlot(args.files, args.descriptions)
+    plot.plot(args.output.name)
 
 
 if __name__ == '__main__':

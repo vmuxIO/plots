@@ -136,11 +136,15 @@ class LatencyHistogramPlot(object):
     _histrange = None
 
     _bins = None
+    _Xmin = None
+    _Xmax = None
+    _Ymin = None
+    _Ymax = None
 
     _fig = None
     _ax = None
 
-    def __init__(self, filepaths, descriptions, bins):
+    def __init__(self, filepaths, descriptions, bins, xmin, xmax, ymin, ymax):
         assert len(filepaths) == len(descriptions)
 
         self._latency_histograms = []
@@ -162,6 +166,10 @@ class LatencyHistogramPlot(object):
         )
         self._histrange = (self._xmin, self._xmax)
         self._bins = bins
+        self._Xmin = xmin
+        self._Xmax = xmax
+        self._Ymin = ymin
+        self._Ymax = ymax
 
     def plot(self, output_filepath):
         self._fig = plt.figure(figsize=(12, 6))
@@ -171,11 +179,18 @@ class LatencyHistogramPlot(object):
         plt.xlabel('Latency (ms)')
         plt.ylabel('Frequency')
 
-        self._ax.set_xticks(np.arange(self._xmin, self._xmax, 1.0))
-        self._ax.set_xticks(np.arange(self._xmin, self._xmax, 0.25),
+        xmin = self._Xmin if self._Xmin is not None else self._xmin
+        xmax = self._Xmax if self._Xmax is not None else self._xmax
+        ymin = self._Ymin if self._Ymin is not None else 0.
+        ymax = self._Ymax if self._Ymax is not None else 1.1
+
+        self._ax.set_xlim(xmin, xmax)
+        self._ax.set_ylim(ymin, ymax)
+        self._ax.set_xticks(np.arange(xmin, xmax, 1.0))
+        self._ax.set_xticks(np.arange(xmin, xmax, 0.25),
                             minor=True)
-        self._ax.set_yticks(np.arange(0., 1.1, 0.1))
-        self._ax.set_yticks(np.arange(0., 1.1, 0.025), minor=True)
+        self._ax.set_yticks(np.arange(ymin, ymax, 0.1))
+        self._ax.set_yticks(np.arange(ymin, ymax, 0.025), minor=True)
         plt.grid(which='major', alpha=0.5, linestyle='dotted', linewidth=0.5)
         plt.grid(which='minor', alpha=0.2, linestyle='dotted', linewidth=0.5)
 
@@ -249,6 +264,26 @@ def setup_parser():
                         default=300,
                         help='Number of bins for the histogram',
                         )
+    parser.add_argument('-x', '--xmin',
+                        type=float,
+                        default=None,
+                        help='Minimum value for the x-axis',
+                        )
+    parser.add_argument('-X', '--xmax',
+                        type=float,
+                        default=None,
+                        help='Maximum value for the x-axis',
+                        )
+    parser.add_argument('-y', '--ymin',
+                        type=float,
+                        default=None,
+                        help='Minimum value for the y-axis',
+                        )
+    parser.add_argument('-Y', '--ymax',
+                        type=float,
+                        default=None,
+                        help='Maximum value for the y-axis',
+                        )
 
     return parser
 
@@ -265,7 +300,8 @@ def main():
     parser = setup_parser()
     args = parse_args(parser)
 
-    plot = LatencyHistogramPlot(args.files, args.descriptions, args.bins)
+    plot = LatencyHistogramPlot(args.files, args.descriptions, args.bins,
+                                args.xmin, args.xmax, args.ymin, args.ymax)
     plot.plot(args.output.name)
 
 

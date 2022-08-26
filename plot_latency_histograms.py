@@ -135,12 +135,12 @@ class LatencyHistogramPlot(object):
     _xmax = None
     _histrange = None
 
-    _bins = 300
+    _bins = None
 
     _fig = None
     _ax = None
 
-    def __init__(self, filepaths, descriptions):
+    def __init__(self, filepaths, descriptions, bins):
         assert len(filepaths) == len(descriptions)
 
         self._latency_histograms = []
@@ -161,6 +161,7 @@ class LatencyHistogramPlot(object):
             [hist.xmax() for hist in self._latency_histograms]
         )
         self._histrange = (self._xmin, self._xmax)
+        self._bins = bins
 
     def plot(self, output_filepath):
         self._fig = plt.figure(figsize=(12, 6))
@@ -243,6 +244,11 @@ def setup_parser():
                         help='Descriptions for latency histograms',
                         required=True,
                         )
+    parser.add_argument('-b', '--bins',
+                        type=int,
+                        default=300,
+                        help='Number of bins for the histogram',
+                        )
 
     return parser
 
@@ -259,7 +265,7 @@ def main():
     parser = setup_parser()
     args = parse_args(parser)
 
-    plot = LatencyHistogramPlot(args.files, args.descriptions)
+    plot = LatencyHistogramPlot(args.files, args.descriptions, args.bins)
     plot.plot(args.output.name)
 
 

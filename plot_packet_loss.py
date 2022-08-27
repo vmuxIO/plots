@@ -10,6 +10,8 @@ class MoonGenLog(object):
     _filepath = None
     _filename = None
 
+    _valid = None
+
     _rate = None
 
     _tx_avg = None
@@ -22,6 +24,13 @@ class MoonGenLog(object):
 
     def __init__(self, filepath):
         self._filepath = filepath
+
+        if getsize(self._filepath) <= 0:
+            print(f'Invalid log file: {self._filepath}, ' +
+                  'file is empty, skipping...')
+            self._valid = False
+            return
+
         self._filename = basename(filepath)
 
         self._rate = int(search(r'(\d+?)Mbps', self._filename).group(1))
@@ -32,8 +41,11 @@ class MoonGenLog(object):
 
         rgx_summary_line = r'^.* bytes \(incl. CRC\)$'
         rx_line, tx_line = findall(rgx_summary_line, log, flags=MULTILINE)
-        assert 'TX' in tx_line and 'RX' in rx_line, \
-            'Could not find TX and RX lines in log'
+        if not ('TX' in tx_line and 'RX' in rx_line):
+            print(f'Invalid log file: {self._filepath}, ' +
+                  'TX or RX summary not found, skipping...')
+            self._valid = False
+            return
 
         rgx_rate = r'(\d+?) \(StdDev (\d+?)\) Mbit/s'
         tx_search = search(rgx_rate, tx_line)
@@ -44,15 +56,26 @@ class MoonGenLog(object):
         self._rx_avg = int(rx_search.group(1))
         self._rx_stddev = int(rx_search.group(2))
 
-        assert self._tx_stddev == 0, \
-            f'TX StdDev is not 0, take measurement {self._filepath} again'
+        if self._tx_stddev != 0:
+            print(f'Invalid log file: {self._filepath}, ' +
+                  'TX rate has non-zero standard deviation, skipping...')
+            self._valid = False
+            return
 
         self._packet_loss_avg = 100 * (self._tx_avg - self._rx_avg) \
             / self._tx_avg
         self._packet_loss_stddev = 100 * self._rx_stddev / self._tx_avg
 
+        self._valid = True
+
     def filepath(self):
         return self._filepath
+
+    def filename(self):
+        return self._filename
+
+    def valid(self):
+        return self._valid
 
     def rate(self):
         return self._rate
@@ -82,13 +105,27 @@ class PacketLossPlot(object):
     def __init__(self, moongen_log_filepaths):
         self._moongen_logs = []
         for filepath in moongen_log_filepaths:
-            if getsize(filepath) > 0:
-                self._moongen_logs.append(MoonGenLog(filepath))
+            moongen_log = MoonGenLog(filepath)
+            if not moongen_log.valid():
+                continue
+            self._moongen_logs.append(moongen_log)
 
     def plot(self, color='blue'):
-        _x = [log.rate() for log in self._moongen_logs]
-        _y = [log.packet_loss_avg() for log in self._moongen_logs]
-        _yerr = [log.packet_loss_stddev() for log in self._moongen_logs]
+        data = {}
+        for moongen_log in self._moongen_logs:
+            rate = moongen_log.rate()
+            if rate not in data:
+                data[rate] = []
+            data[rate].append(moongen_log)
+
+        _x = []
+        _y = []
+        _yerr = []
+
+        for rate, logs in data.items():
+            _x.append(rate)
+            _y.append(np.mean([log.packet_loss_avg() for log in logs]))
+            _yerr.append(np.mean([log.packet_loss_stddev() for log in logs]))
 
         order = np.argsort(_x)
         x = np.array(_x)[order]

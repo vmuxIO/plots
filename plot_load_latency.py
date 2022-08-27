@@ -37,8 +37,6 @@ class LatencyHistogram(object):
         self._percentile50 = np.percentile(self._latencies, 50)
         self._percentile75 = np.percentile(self._latencies, 75)
         self._percentile99 = np.percentile(self._latencies, 99)
-        print(self._rate, self._percentile25, self._percentile50,
-              self._percentile75, self._percentile99)
 
     def filepath(self):
         return self._filepath
@@ -69,7 +67,66 @@ class LoadLatencyPlot(object):
                 self._latency_histograms.append(LatencyHistogram(filepath))
 
     def plot(self):
-        pass
+        fig = plt.figure(figsize=(12, 6))
+        ax = fig.add_subplot(1, 1, 1)
+        ax.set_axisbelow(True)
+        plt.title('Latency distribution for different loads')
+        plt.xlabel('Load (Mbps)')
+        plt.ylabel('Latency (ms)')
+        plt.grid()
+
+        _x = [hist.rate() for hist in self._latency_histograms]
+        _y25 = [hist.percentile25() for hist in self._latency_histograms]
+        _y50 = [hist.percentile50() for hist in self._latency_histograms]
+        _y75 = [hist.percentile75() for hist in self._latency_histograms]
+        _y99 = [hist.percentile99() for hist in self._latency_histograms]
+
+        order = np.argsort(_x)
+        x = np.array(_x)[order]
+        y25 = np.array(_y25)[order]
+        y50 = np.array(_y50)[order]
+        y75 = np.array(_y75)[order]
+        y99 = np.array(_y99)[order]
+
+        plt.plot(
+            x,
+            y25,
+            label='25th percentile',
+            linestyle=':',
+            color='blue',
+            linewidth=1,
+        )
+        plt.plot(
+            x,
+            y50,
+            label='50th percentile',
+            color='blue',
+            linestyle='-',
+            linewidth=1,
+            marker='x',
+        )
+        plt.plot(
+            x,
+            y75,
+            label='75th percentile',
+            color='blue',
+            linestyle='-.',
+            linewidth=1,
+        )
+        plt.plot(
+            x,
+            y99,
+            label='99th percentile',
+            linestyle='--',
+            color='blue',
+            linewidth=1,
+        )
+
+        legend = plt.legend()
+        legend.get_frame().set_facecolor('white')
+        legend.get_frame().set_alpha(0.8)
+        plt.savefig('load_latency.pdf')
+        plt.close()
 
 
 def setup_parser():

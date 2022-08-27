@@ -66,15 +66,7 @@ class LoadLatencyPlot(object):
             if getsize(filepath) > 0:
                 self._latency_histograms.append(LatencyHistogram(filepath))
 
-    def plot(self, output_filepath):
-        fig = plt.figure(figsize=(12, 6))
-        ax = fig.add_subplot(1, 1, 1)
-        ax.set_axisbelow(True)
-        plt.title('Latency distribution for different loads')
-        plt.xlabel('Load (Mbps)')
-        plt.ylabel('Latency (ms)')
-        plt.grid()
-
+    def plot(self, color='blue'):
         _x = [hist.rate() for hist in self._latency_histograms]
         _y25 = [hist.percentile25() for hist in self._latency_histograms]
         _y50 = [hist.percentile50() for hist in self._latency_histograms]
@@ -93,14 +85,14 @@ class LoadLatencyPlot(object):
             y25,
             label='25th percentile',
             linestyle=':',
-            color='blue',
+            color=color,
             linewidth=1,
         )
         plt.plot(
             x,
             y50,
             label='50th percentile',
-            color='blue',
+            color=color,
             linestyle='-',
             linewidth=1,
             marker='x',
@@ -109,7 +101,7 @@ class LoadLatencyPlot(object):
             x,
             y75,
             label='75th percentile',
-            color='blue',
+            color=color,
             linestyle='-.',
             linewidth=1,
         )
@@ -118,15 +110,9 @@ class LoadLatencyPlot(object):
             y99,
             label='99th percentile',
             linestyle='--',
-            color='blue',
+            color=color,
             linewidth=1,
         )
-
-        legend = plt.legend()
-        legend.get_frame().set_facecolor('white')
-        legend.get_frame().set_alpha(0.8)
-        plt.savefig(output_filepath)
-        plt.close()
 
 
 def setup_parser():
@@ -145,6 +131,11 @@ def setup_parser():
                              (default: latency_histogram.pdf)''',
                         default='latency_histograms.pdf'
                         )
+    parser.add_argument('-c', '--compare',
+                        type=argparse.FileType('r'),
+                        nargs='+',
+                        help='Paths to latency histogram CSVs to compare to',
+                        )
 
     return parser
 
@@ -159,8 +150,26 @@ def main():
     parser = setup_parser()
     args = parse_args(parser)
 
+    fig = plt.figure(figsize=(12, 6))
+    ax = fig.add_subplot(1, 1, 1)
+    ax.set_axisbelow(True)
+    plt.title('Latency distribution for different loads')
+    plt.xlabel('Load (Mbps)')
+    plt.ylabel('Latency (ms)')
+    plt.grid()
+
     plot = LoadLatencyPlot([h.name for h in args.histograms])
-    plot.plot(args.output.name)
+    plot.plot(color='blue')
+
+    if args.compare:
+        plot2 = LoadLatencyPlot([h.name for h in args.compare])
+        plot2.plot(color='orange')
+
+    legend = plt.legend()
+    legend.get_frame().set_facecolor('white')
+    legend.get_frame().set_alpha(0.8)
+    plt.savefig(args.output.name)
+    plt.close()
 
 
 if __name__ == '__main__':

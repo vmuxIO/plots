@@ -66,7 +66,7 @@ class LoadLatencyPlot(object):
             if getsize(filepath) > 0:
                 self._latency_histograms.append(LatencyHistogram(filepath))
 
-    def plot(self):
+    def plot(self, output_filepath):
         fig = plt.figure(figsize=(12, 6))
         ax = fig.add_subplot(1, 1, 1)
         ax.set_axisbelow(True)
@@ -125,7 +125,7 @@ class LoadLatencyPlot(object):
         legend = plt.legend()
         legend.get_frame().set_facecolor('white')
         legend.get_frame().set_alpha(0.8)
-        plt.savefig('load_latency.pdf')
+        plt.savefig(output_filepath)
         plt.close()
 
 
@@ -138,6 +138,12 @@ def setup_parser():
                         type=argparse.FileType('r'),
                         nargs='+',
                         help='Paths to latency histogram CSVs',
+                        )
+    parser.add_argument('-o', '--output',
+                        type=argparse.FileType('w+'),
+                        help='''Path to the output plot
+                             (default: latency_histogram.pdf)''',
+                        default='latency_histograms.pdf'
                         )
 
     return parser
@@ -154,7 +160,7 @@ def main():
     args = parse_args(parser)
 
     plot = LoadLatencyPlot([h.name for h in args.histograms])
-    plot.plot()
+    plot.plot(args.output.name)
 
 
 if __name__ == '__main__':

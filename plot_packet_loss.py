@@ -95,20 +95,15 @@ class PacketLossPlot(object):
         y = np.array(_y)[order]
         yerr = np.array(_yerr)[order]
 
-        plt.plot(
-            x,
-            y,
-            linestyle='--',
-            color=color,
-            linewidth=1,
-            marker='o',
-        )
         plt.errorbar(
             x,
             y,
             yerr=yerr,
             color=color,
             ecolor=color,
+            linewidth=1,
+            linestyle='--',
+            marker='o',
             elinewidth=1,
             capsize=5,
         )

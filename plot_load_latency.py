@@ -128,8 +128,8 @@ def setup_parser():
     parser.add_argument('-o', '--output',
                         type=argparse.FileType('w+'),
                         help='''Path to the output plot
-                             (default: latency_histogram.pdf)''',
-                        default='latency_histograms.pdf'
+                             (default: load_latency.pdf)''',
+                        default='load_latency.pdf'
                         )
     parser.add_argument('-c', '--compare',
                         type=argparse.FileType('r'),

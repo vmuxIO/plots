@@ -24,7 +24,7 @@ class LatencyHistogram(object):
         self._filepath = filepath
         self._filename = basename(filepath)
 
-        self._rate = int(search(r'(\d+?)Mbps', self._filename).group(1))
+        self._rate = int(search(r'(\d+?)kpps', self._filename).group(1))
 
         self._data = np.genfromtxt(self._filepath, delimiter=',')
         self._data[:, 0] /= 1e6
@@ -154,7 +154,7 @@ def main():
     ax = fig.add_subplot(1, 1, 1)
     ax.set_axisbelow(True)
     plt.title('Latency distribution for different loads')
-    plt.xlabel('Load (Mbps)')
+    plt.xlabel('Load (kpps)')
     plt.ylabel('Latency (ms)')
     plt.grid()
 

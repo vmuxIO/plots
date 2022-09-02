@@ -136,6 +136,10 @@ def setup_parser():
                         nargs='+',
                         help='Paths to latency histogram CSVs to compare to',
                         )
+    parser.add_argument('-l', '--logarithmic',
+                        action='store_true',
+                        help='Plot logarithmic latency axis',
+                        )
 
     return parser
 
@@ -164,6 +168,8 @@ def main():
     if args.compare:
         plot2 = LoadLatencyPlot([h.name for h in args.compare])
         plot2.plot(color='orange')
+
+    ax.set_yscale('log' if args.logarithmic else 'linear')
 
     legend = plt.legend()
     legend.get_frame().set_facecolor('white')

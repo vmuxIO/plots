@@ -74,15 +74,17 @@ class LatencyHistogram(object):
 class LoadLatencyPlot(object):
     _latency_histograms = None
     _name = None
+    _color = None
 
-    def __init__(self, histogram_filepaths, name):
+    def __init__(self, histogram_filepaths, name, color):
         self._latency_histograms = []
         for filepath in histogram_filepaths:
             if getsize(filepath) > 0:
                 self._latency_histograms.append(LatencyHistogram(filepath))
         self._name = name
+        self._color = color
 
-    def plot(self, color='blue'):
+    def plot(self):
         _x = [hist.rate() for hist in self._latency_histograms]
         _y25 = [hist.percentile25() for hist in self._latency_histograms]
         _y50 = [hist.percentile50() for hist in self._latency_histograms]
@@ -101,14 +103,14 @@ class LoadLatencyPlot(object):
             y25,
             label=f'{self._name} 25th percentile',
             linestyle=':',
-            color=color,
+            color=self._color,
             linewidth=1,
         )
         plt.plot(
             x,
             y50,
             label=f'{self._name} 50th percentile',
-            color=color,
+            color=self._color,
             linestyle='-',
             linewidth=1,
             marker='x',
@@ -117,7 +119,7 @@ class LoadLatencyPlot(object):
             x,
             y75,
             label=f'{self._name} 75th percentile',
-            color=color,
+            color=self._color,
             linestyle='-.',
             linewidth=1,
         )
@@ -126,7 +128,7 @@ class LoadLatencyPlot(object):
             y99,
             label=f'{self._name} 99th percentile',
             linestyle='--',
-            color=color,
+            color=self._color,
             linewidth=1,
         )
 
@@ -193,9 +195,12 @@ def main():
 
     for color in COLORS:
         if args.__dict__[color]:
-            plot = LoadLatencyPlot([h.name for h in args.__dict__[color]],
-                                   args.__dict__[f'{color}_name'])
-            plot.plot(color=color)
+            plot = LoadLatencyPlot(
+                histogram_filepaths=[h.name for h in args.__dict__[color]],
+                name=args.__dict__[f'{color}_name'],
+                color=color
+            )
+            plot.plot()
 
     ax.set_yscale('log' if args.logarithmic else 'linear')
 

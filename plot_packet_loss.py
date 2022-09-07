@@ -56,9 +56,9 @@ class MoonGenLog(object):
         self._rx_avg = int(rx_search.group(1))
         self._rx_stddev = int(rx_search.group(2))
 
-        if self._tx_stddev != 0:
+        if self._tx_stddev > 0.2 * self._tx_avg:
             print(f'Invalid log file: {self._filepath}, ' +
-                  'TX rate has non-zero standard deviation, skipping...')
+                  'TX rate has too large standard deviation, skipping...')
             self._valid = False
             return
 

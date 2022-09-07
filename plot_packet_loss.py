@@ -151,6 +151,11 @@ def setup_parser():
         description='Plot packet loss graph'
     )
 
+    parser.add_argument('-t',
+                        '--title',
+                        type=str,
+                        help='Title of the plot',
+                        )
     parser.add_argument('logs',
                         type=argparse.FileType('r'),
                         nargs='+',
@@ -184,7 +189,8 @@ def main():
     fig = plt.figure(figsize=(12, 6))
     ax = fig.add_subplot(1, 1, 1)
     ax.set_axisbelow(True)
-    plt.title('Packet loss for different loads')
+    if args.title:
+        plt.title(args.title)
     plt.xlabel('Load (kpps)')
     plt.ylabel('Packet Loss (%)')
     plt.grid()

@@ -33,7 +33,7 @@ class MoonGenLog(object):
 
         self._filename = basename(filepath)
 
-        self._rate = int(search(r'(\d+?)Mbps', self._filename).group(1))
+        self._rate = int(search(r'(\d+?)kpps', self._filename).group(1))
 
         log = ''
         with open(self._filepath, 'r') as f:
@@ -185,7 +185,7 @@ def main():
     ax = fig.add_subplot(1, 1, 1)
     ax.set_axisbelow(True)
     plt.title('Packet loss for different loads')
-    plt.xlabel('Load (Mbps)')
+    plt.xlabel('Load (kpps)')
     plt.ylabel('Packet Loss (%)')
     plt.grid()
     plt.ylim(-5, 105)

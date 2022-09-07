@@ -131,14 +131,10 @@ def setup_parser():
                              (default: load_latency.pdf)''',
                         default='load_latency.pdf'
                         )
-    parser.add_argument('-c', '--compare',
-                        type=argparse.FileType('r'),
-                        nargs='+',
-                        help='Paths to latency histogram CSVs to compare to',
-                        )
-    parser.add_argument('-l', '--logarithmic',
-                        action='store_true',
-                        help='Plot logarithmic latency axis',
+    parser.add_argument('-t',
+                        '--title',
+                        type=str,
+                        help='Title of the plot',
                         )
 
     return parser
@@ -157,7 +153,8 @@ def main():
     fig = plt.figure(figsize=(12, 6))
     ax = fig.add_subplot(1, 1, 1)
     ax.set_axisbelow(True)
-    plt.title('Latency distribution for different loads')
+    if args.title:
+        plt.title(args.title)
     plt.xlabel('Load (kpps)')
     plt.ylabel('Latency (ms)')
     plt.grid()

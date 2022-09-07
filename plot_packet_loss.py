@@ -6,6 +6,17 @@ from re import search, findall, MULTILINE
 from os.path import basename, getsize
 
 
+COLORS = [
+    'blue',
+    'cyan',
+    'green',
+    'yellow',
+    'orange',
+    'red',
+    'magenta',
+]
+
+
 class MoonGenLog(object):
     _filepath = None
     _filename = None
@@ -101,16 +112,20 @@ class MoonGenLog(object):
 
 class PacketLossPlot(object):
     _moongen_logs = None
+    _name = None
+    _color = None
 
-    def __init__(self, moongen_log_filepaths):
+    def __init__(self, moongen_log_filepaths, name, color):
         self._moongen_logs = []
         for filepath in moongen_log_filepaths:
             moongen_log = MoonGenLog(filepath)
             if not moongen_log.valid():
                 continue
             self._moongen_logs.append(moongen_log)
+        self._name = name
+        self._color = color
 
-    def plot(self, color='blue'):
+    def plot(self):
         data = {}
         for moongen_log in self._moongen_logs:
             rate = moongen_log.rate()
@@ -136,8 +151,9 @@ class PacketLossPlot(object):
             x,
             y,
             yerr=yerr,
-            color=color,
-            ecolor=color,
+            label=self._name,
+            color=self._color,
+            ecolor=self._color,
             linewidth=1,
             linestyle='--',
             marker='o',
@@ -156,28 +172,35 @@ def setup_parser():
                         type=str,
                         help='Title of the plot',
                         )
-    parser.add_argument('logs',
-                        type=argparse.FileType('r'),
-                        nargs='+',
-                        help='Paths to MoonGen measurement logs',
-                        )
     parser.add_argument('-o', '--output',
                         type=argparse.FileType('w+'),
                         help='''Path to the output plot
                              (default: packet_loss.pdf)''',
                         default='packet_loss.pdf'
                         )
-    parser.add_argument('-c', '--compare',
-                        type=argparse.FileType('r'),
-                        nargs='+',
-                        help='Paths to MoonGen measurement logs to compare to',
-                        )
+    for color in COLORS:
+        parser.add_argument(f'--{color}',
+                            type=argparse.FileType('r'),
+                            nargs='+',
+                            help=f'''Paths to MoonGen measurement logs for
+                                  the {color} plot''',
+                            )
+    for color in COLORS:
+        parser.add_argument(f'--{color}-name',
+                            type=str,
+                            default=color,
+                            help=f'''Name of {color} plot''',
+                            )
 
     return parser
 
 
 def parse_args(parser):
     args = parser.parse_args()
+
+    if not any([args.__dict__[color] for color in COLORS]):
+        parser.error('At least one set of moongen log paths must be ' +
+                     'provided')
 
     return args
 
@@ -196,18 +219,21 @@ def main():
     plt.grid()
     plt.ylim(-5, 105)
 
-    plot = PacketLossPlot([h.name for h in args.logs])
-    plot.plot(color='blue')
+    for color in COLORS:
+        if args.__dict__[color]:
+            plot = PacketLossPlot(
+                moongen_log_filepaths=[h.name for h in args.__dict__[color]],
+                name=args.__dict__[f'{color}_name'],
+                color=color,
+            )
+            plot.plot()
 
-    if args.compare:
-        plot2 = PacketLossPlot([h.name for h in args.compare])
-        plot2.plot(color='orange')
-
-    # legend = plt.legend()
-    # legend.get_frame().set_facecolor('white')
-    # legend.get_frame().set_alpha(0.8)
+    legend = plt.legend()
+    legend.get_frame().set_facecolor('white')
+    legend.get_frame().set_alpha(0.8)
     plt.savefig(args.output.name)
     plt.close()
+
 
 if __name__ == '__main__':
     main()

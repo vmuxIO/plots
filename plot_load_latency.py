@@ -6,6 +6,17 @@ from re import search
 from os.path import basename, getsize
 
 
+COLORS = [
+    'blue',
+    'cyan',
+    'green',
+    'yellow',
+    'orange',
+    'red',
+    'magenta',
+]
+
+
 class LatencyHistogram(object):
     _filepath = None
     _filename = None
@@ -41,6 +52,9 @@ class LatencyHistogram(object):
     def filepath(self):
         return self._filepath
 
+    def filename(self):
+        return self._filename
+
     def rate(self):
         return self._rate
 
@@ -59,12 +73,14 @@ class LatencyHistogram(object):
 
 class LoadLatencyPlot(object):
     _latency_histograms = None
+    _name = None
 
-    def __init__(self, histogram_filepaths):
+    def __init__(self, histogram_filepaths, name):
         self._latency_histograms = []
         for filepath in histogram_filepaths:
             if getsize(filepath) > 0:
                 self._latency_histograms.append(LatencyHistogram(filepath))
+        self._name = name
 
     def plot(self, color='blue'):
         _x = [hist.rate() for hist in self._latency_histograms]
@@ -83,7 +99,7 @@ class LoadLatencyPlot(object):
         plt.plot(
             x,
             y25,
-            label='25th percentile',
+            label=f'{self._name} 25th percentile',
             linestyle=':',
             color=color,
             linewidth=1,
@@ -91,7 +107,7 @@ class LoadLatencyPlot(object):
         plt.plot(
             x,
             y50,
-            label='50th percentile',
+            label=f'{self._name} 50th percentile',
             color=color,
             linestyle='-',
             linewidth=1,
@@ -100,7 +116,7 @@ class LoadLatencyPlot(object):
         plt.plot(
             x,
             y75,
-            label='75th percentile',
+            label=f'{self._name} 75th percentile',
             color=color,
             linestyle='-.',
             linewidth=1,
@@ -108,7 +124,7 @@ class LoadLatencyPlot(object):
         plt.plot(
             x,
             y99,
-            label='99th percentile',
+            label=f'{self._name} 99th percentile',
             linestyle='--',
             color=color,
             linewidth=1,
@@ -120,10 +136,14 @@ def setup_parser():
         description='Plot load latency percentile graph'
     )
 
-    parser.add_argument('histograms',
-                        type=argparse.FileType('r'),
-                        nargs='+',
-                        help='Paths to latency histogram CSVs',
+    parser.add_argument('-t',
+                        '--title',
+                        type=str,
+                        help='Title of the plot',
+                        )
+    parser.add_argument('-l', '--logarithmic',
+                        action='store_true',
+                        help='Plot logarithmic latency axis',
                         )
     parser.add_argument('-o', '--output',
                         type=argparse.FileType('w+'),
@@ -131,17 +151,29 @@ def setup_parser():
                              (default: load_latency.pdf)''',
                         default='load_latency.pdf'
                         )
-    parser.add_argument('-t',
-                        '--title',
-                        type=str,
-                        help='Title of the plot',
-                        )
+    for color in COLORS:
+        parser.add_argument(f'--{color}',
+                            type=argparse.FileType('r'),
+                            nargs='+',
+                            help=f'''Paths to latency histogram CSVs for
+                                  {color} plot''',
+                            )
+    for color in COLORS:
+        parser.add_argument(f'--{color}-name',
+                            type=str,
+                            default=color,
+                            help=f'''Name of {color} plot''',
+                            )
 
     return parser
 
 
 def parse_args(parser):
     args = parser.parse_args()
+
+    if not any([args.__dict__[color] for color in COLORS]):
+        parser.error('At least one set of latency histogram paths must be ' +
+                     'provided')
 
     return args
 
@@ -159,12 +191,11 @@ def main():
     plt.ylabel('Latency (ms)')
     plt.grid()
 
-    plot = LoadLatencyPlot([h.name for h in args.histograms])
-    plot.plot(color='blue')
-
-    if args.compare:
-        plot2 = LoadLatencyPlot([h.name for h in args.compare])
-        plot2.plot(color='orange')
+    for color in COLORS:
+        if args.__dict__[color]:
+            plot = LoadLatencyPlot([h.name for h in args.__dict__[color]],
+                                   args.__dict__[f'{color}_name'])
+            plot.plot(color=color)
 
     ax.set_yscale('log' if args.logarithmic else 'linear')
 

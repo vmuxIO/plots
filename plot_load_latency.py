@@ -207,6 +207,7 @@ def main():
     legend = plt.legend()
     legend.get_frame().set_facecolor('white')
     legend.get_frame().set_alpha(0.8)
+    fig.tight_layout()
     plt.savefig(args.output.name)
     plt.close()
 

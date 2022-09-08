@@ -73,7 +73,7 @@ class MoonGenLog(object):
             self._valid = False
             return
 
-        self._packet_loss_avg = 100 * (self._tx_avg - self._rx_avg) \
+        self._packet_loss_avg = 100 * max(self._tx_avg - self._rx_avg, 0) \
             / self._tx_avg
         self._packet_loss_stddev = 100 * self._rx_stddev / self._tx_avg
 

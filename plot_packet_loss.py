@@ -172,6 +172,16 @@ def setup_parser():
                         type=str,
                         help='Title of the plot',
                         )
+    parser.add_argument('-W', '--width',
+                        type=float,
+                        default=12,
+                        help='Width of the plot in inches'
+                        )
+    parser.add_argument('-H', '--height',
+                        type=float,
+                        default=6,
+                        help='Height of the plot in inches'
+                        )
     parser.add_argument('-o', '--output',
                         type=argparse.FileType('w+'),
                         help='''Path to the output plot
@@ -209,7 +219,7 @@ def main():
     parser = setup_parser()
     args = parse_args(parser)
 
-    fig = plt.figure(figsize=(12, 6))
+    fig = plt.figure(figsize=(args.width, args.height))
     ax = fig.add_subplot(1, 1, 1)
     ax.set_axisbelow(True)
     if args.title:

@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import argparse
 from re import search
 from os.path import basename, getsize
 
 
-COLORS = [
-    'blue',
-    'cyan',
-    'green',
-    'yellow',
-    'orange',
-    'red',
-    'magenta',
-]
+COLORS = mcolors.CSS4_COLORS.keys()
+# COLORS = [
+#     'blue',
+#     'cyan',
+#     'green',
+#     'yellow',
+#     'orange',
+#     'red',
+#     'magenta',
+# ]
 
 
 class LatencyHistogram(object):

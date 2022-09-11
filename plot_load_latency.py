@@ -76,6 +76,11 @@ class LoadLatencyPlot(object):
     _name = None
     _color = None
 
+    _plot25 = None
+    _plot50 = None
+    _plot75 = None
+    _plot99 = None
+
     def __init__(self, histogram_filepaths, name, color):
         self._latency_histograms = []
         for filepath in histogram_filepaths:
@@ -98,7 +103,7 @@ class LoadLatencyPlot(object):
         y75 = np.array(_y75)[order]
         y99 = np.array(_y99)[order]
 
-        plt.plot(
+        self._plot25, = plt.plot(
             x,
             y25,
             label=f'{self._name} 25th percentile',
@@ -106,7 +111,7 @@ class LoadLatencyPlot(object):
             color=self._color,
             linewidth=1,
         )
-        plt.plot(
+        self._plot50, = plt.plot(
             x,
             y50,
             label=f'{self._name} 50th percentile',
@@ -115,7 +120,7 @@ class LoadLatencyPlot(object):
             linewidth=1,
             marker='x',
         )
-        plt.plot(
+        self._plot75, = plt.plot(
             x,
             y75,
             label=f'{self._name} 75th percentile',
@@ -123,7 +128,7 @@ class LoadLatencyPlot(object):
             linestyle='-.',
             linewidth=1,
         )
-        plt.plot(
+        self._plot99, = plt.plot(
             x,
             y99,
             label=f'{self._name} 99th percentile',
@@ -163,6 +168,11 @@ def setup_parser():
                              (default: load_latency.pdf)''',
                         default='load_latency.pdf'
                         )
+    parser.add_argument('-c', '--compress',
+                        action='store_true',
+                        help='Compress the legend',
+                        default=False
+                        )
     for color in COLORS:
         parser.add_argument(f'--{color}',
                             type=argparse.FileType('r'),
@@ -190,6 +200,10 @@ def parse_args(parser):
     return args
 
 
+def chain(lst: list[list]) -> list:
+    return [item for sublist in lst for item in sublist]
+
+
 def main():
     parser = setup_parser()
     args = parse_args(parser)
@@ -203,6 +217,7 @@ def main():
     plt.ylabel('Latency (ms)')
     plt.grid()
 
+    plots = []
     for color in COLORS:
         if args.__dict__[color]:
             plot = LoadLatencyPlot(
@@ -211,10 +226,35 @@ def main():
                 color=color
             )
             plot.plot()
+            plots.append(plot)
 
     ax.set_yscale('log' if args.logarithmic else 'linear')
 
-    legend = plt.legend()
+    legend = None
+
+    if args.compress:
+        # empty  name1 name2 ...
+        # 25pctl x     x     ...
+        # 50pctl x     x     ...
+        # 75pctl x     x     ...
+        # 99pctl x     x     ...
+        dummy, = plt.plot([0], marker='None', linestyle='None',
+                         label='dummy')
+        legend = plt.legend(
+            chain([
+                [dummy, p._plot25, p._plot50, p._plot75, p._plot99]
+                for p in plots
+            ]),
+            chain([
+                [p._name, '25.pctl', '50.pctl', '75.pctl', '99.pctl']
+                for p in plots
+            ]),
+            ncol=len(plots),
+            prop={'size': 8},
+        )
+    else:
+        legend = plt.legend()
+
     legend.get_frame().set_facecolor('white')
     legend.get_frame().set_alpha(0.8)
     fig.tight_layout()

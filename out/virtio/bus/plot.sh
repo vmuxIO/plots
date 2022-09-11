@@ -7,7 +7,7 @@ for n in 'bridge' 'macvtap'; do
         r='xdp'
         for s in "60B" "1020B"; do
             name="$n $q $v $i $r $s"
-            infix="${n}_${q}_${v}_${i}_${r}"
+            infix="${n}_${q}_${v}_${i}_${r}_${s}"
 
             bluem='pcvm'
             redm='microvm'
@@ -15,11 +15,11 @@ for n in 'bridge' 'macvtap'; do
             bluename="$bluem $name"
             redname="$redm $name"
 
-            blueinfix1="${bluem}_${infix}"
+            blueinfix1="${bluem}_${n}_${q}_${v}_${i}_${r}"
             blueinfix2="$s"
             blueinfix="${blueinfix1}_${blueinfix2}"
 
-            redinfix1="${redm}_${infix}"
+            redinfix1="${redm}_${n}_${q}_${v}_${i}_${r}"
             redinfix2="$s"
             redinfix="${redinfix1}_${redinfix2}"
 
@@ -36,7 +36,7 @@ for n in 'bridge' 'macvtap'; do
                 --red-name "${redm}" \
                 --logarithmic \
                 --width 6 \
-                --height 6 \
+                --height 4 \
                 --output "load_latency_${infix}.pdf"
 
             ../../../plot_packet_loss.py \
@@ -45,7 +45,7 @@ for n in 'bridge' 'macvtap'; do
                 --red "../../../dat/virtio/output_${redinfix1}_"*"_${redinfix2}_"* \
                 --red-name "${redm}" \
                 --width 6 \
-                --height 6 \
+                --height 4 \
                 --output "packet_loss_${infix}.pdf"
         done
     done

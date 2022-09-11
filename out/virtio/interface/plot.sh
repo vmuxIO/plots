@@ -65,7 +65,7 @@ for m in 'pcvm' 'microvm'; do
                             --width 6 \
                             --height 6 \
                             --output "packet_loss_${infix}.pdf"
-                                done
+                    done
                 done
             done
         done

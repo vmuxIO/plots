@@ -23,7 +23,7 @@ for n in 'bridge' 'macvtap'; do
             redinfix2="$s"
             redinfix="${redinfix1}_${redinfix2}"
 
-            echo "Plotting ${bluename} vs ${redname}"
+            echo "Plotting ${name}"
             # ls "../../../dat/virtio/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"*
             # ls "../../../dat/virtio/output_${blueinfix1}_"*"_${blueinfix2}_"*
             # ls "../../../dat/virtio/acc_histogram_${redinfix1}_"*"_${redinfix2}_"*

@@ -45,7 +45,7 @@ for n in 'bridge' 'macvtap'; do
                 --red "../../../dat/virtio/output_${redinfix1}_"*"_${redinfix2}_"* \
                 --red-name "${redm}" \
                 --width 6 \
-                --height 4 \
+                --height 2 \
                 --output "packet_loss_${infix}.pdf"
         done
     done

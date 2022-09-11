@@ -51,7 +51,7 @@ for m in 'pcvm' 'microvm'; do
                             --red-name "${reds}" \
                             --logarithmic \
                             --width 6 \
-                            --height 6 \
+                            --height 4 \
                             --output "load_latency_${infix}.pdf"
 
                         ../../../plot_packet_loss.py \
@@ -60,7 +60,7 @@ for m in 'pcvm' 'microvm'; do
                             --red "../../../dat/virtio/output_${redinfix1}_"*"_${redinfix2}_"* \
                             --red-name "${reds}" \
                             --width 6 \
-                            --height 6 \
+                            --height 2 \
                             --output "packet_loss_${infix}.pdf"
                     done
                 done

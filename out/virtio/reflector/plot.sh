@@ -1,69 +1,52 @@
 #!/bin/bash
 
-../../../plot_load_latency.py \
-    --blue ../../../dat/virtio/acc_histogram_pcvm_bridge_normal_vhostoff_ioregionfdoff_moongen_* \
-    --blue-name 'moongen' \
-    --red ../../../dat/virtio/acc_histogram_pcvm_bridge_normal_vhostoff_ioregionfdoff_xdp_* \
-    --red-name 'xdp' \
-    --width 6 --height 6 \
-    --logarithmic \
-    --output 'load_latency_pcvm_bridge_vhostoff_ioregionfdoff.pdf'
+m='pcvm'
+q='normal'
+for n in 'bridge' 'macvtap'; do
+    for v in 'vhostoff' 'vhoston'; do
+        i='ioregionfdoff'
+        for s in "60B" "1020B"; do
+            name="$m $n $q $v $i $s"
+            infix="${m}_${n}_${q}_${v}_${i}_${s}"
 
-../../../plot_load_latency.py \
-    --blue ../../../dat/virtio/acc_histogram_pcvm_bridge_normal_vhoston_ioregionfdoff_moongen_* \
-    --blue-name 'moongen' \
-    --red ../../../dat/virtio/acc_histogram_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_* \
-    --red-name 'xdp' \
-    --width 6 --height 6 \
-    --logarithmic \
-    --output 'load_latency_pcvm_bridge_vhoston_ioregionfdoff.pdf'
+            bluer='moongen'
+            redr='xdp'
 
-../../../plot_load_latency.py \
-    --blue ../../../dat/virtio/acc_histogram_pcvm_macvtap_normal_vhostoff_ioregionfdoff_moongen_* \
-    --blue-name 'moongen' \
-    --red ../../../dat/virtio/acc_histogram_pcvm_macvtap_normal_vhostoff_ioregionfdoff_xdp_* \
-    --red-name 'xdp' \
-    --width 6 --height 6 \
-    --logarithmic \
-    --output 'load_latency_pcvm_macvtap_vhostoff_ioregionfdoff.pdf'
+            bluename="$m $n $q $v $i ${bluer} $s"
+            redname="$m $n $q $v $i ${redr} $s"
 
-../../../plot_load_latency.py \
-    --blue ../../../dat/virtio/acc_histogram_pcvm_macvtap_normal_vhoston_ioregionfdoff_moongen_* \
-    --blue-name 'moongen' \
-    --red ../../../dat/virtio/acc_histogram_pcvm_macvtap_normal_vhoston_ioregionfdoff_xdp_* \
-    --red-name 'xdp' \
-    --width 6 --height 6 \
-    --logarithmic \
-    --output 'load_latency_pcvm_macvtap_vhoston_ioregionfdoff.pdf'
+            blueinfix1="${m}_${n}_${q}_${v}_${i}_${bluer}"
+            blueinfix2="$s"
+            blueinfix="${blueinfix1}_${blueinfix2}"
 
-../../../plot_packet_loss.py \
-    --blue ../../../dat/virtio/output_pcvm_bridge_normal_vhostoff_ioregionfdoff_moongen_* \
-    --blue-name 'moongen' \
-    --red ../../../dat/virtio/output_pcvm_bridge_normal_vhostoff_ioregionfdoff_xdp_* \
-    --red-name 'xdp' \
-    --width 6 --height 6 \
-    --output 'packet_loss_pcvm_bridge_vhostoff_ioregionfdoff.pdf'
+            redinfix1="${m}_${n}_${q}_${v}_${i}_${redr}"
+            redinfix2="$s"
+            redinfix="${redinfix1}_${redinfix2}"
 
-../../../plot_packet_loss.py \
-    --blue ../../../dat/virtio/output_pcvm_bridge_normal_vhoston_ioregionfdoff_moongen_* \
-    --blue-name 'moongen' \
-    --red ../../../dat/virtio/output_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_* \
-    --red-name 'xdp' \
-    --width 6 --height 6 \
-    --output 'packet_loss_pcvm_bridge_vhoston_ioregionfdoff.pdf'
+            echo "Plotting ${name}"
+            # ls "../../../dat/virtio/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"*
+            # ls "../../../dat/virtio/output_${blueinfix1}_"*"_${blueinfix2}_"*
+            # ls "../../../dat/virtio/acc_histogram_${redinfix1}_"*"_${redinfix2}_"*
+            # ls "../../../dat/virtio/output_${redinfix1}_"*"_${redinfix2}_"*
 
-../../../plot_packet_loss.py \
-    --blue ../../../dat/virtio/output_pcvm_macvtap_normal_vhostoff_ioregionfdoff_moongen_* \
-    --blue-name 'moongen' \
-    --red ../../../dat/virtio/output_pcvm_macvtap_normal_vhostoff_ioregionfdoff_xdp_* \
-    --red-name 'xdp' \
-    --width 6 --height 6 \
-    --output 'packet_loss_pcvm_macvtap_vhostoff_ioregionfdoff.pdf'
+            ../../../plot_load_latency.py \
+                --blue "../../../dat/virtio/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"* \
+                --blue-name "${bluer}" \
+                --red "../../../dat/virtio/acc_histogram_${redinfix1}_"*"_${redinfix2}_"* \
+                --red-name "${redr}" \
+                --logarithmic \
+                --width 6 \
+                --height 6 \
+                --output "load_latency_${infix}.pdf"
 
-../../../plot_packet_loss.py \
-    --blue ../../../dat/virtio/output_pcvm_macvtap_normal_vhoston_ioregionfdoff_moongen_* \
-    --blue-name 'moongen' \
-    --red ../../../dat/virtio/output_pcvm_macvtap_normal_vhoston_ioregionfdoff_xdp_* \
-    --red-name 'xdp' \
-    --width 6 --height 6 \
-    --output 'packet_loss_pcvm_macvtap_vhoston_ioregionfdoff.pdf'
+            ../../../plot_packet_loss.py \
+                --blue "../../../dat/virtio/output_${blueinfix1}_"*"_${blueinfix2}_"* \
+                --blue-name "${bluer}" \
+                --red "../../../dat/virtio/output_${redinfix1}_"*"_${redinfix2}_"* \
+                --red-name "${redr}" \
+                --width 6 \
+                --height 6 \
+                --output "packet_loss_${infix}.pdf"
+        done
+    done
+done

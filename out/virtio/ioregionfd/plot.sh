@@ -41,23 +41,24 @@ for n in 'bridge' 'macvtap'; do
 
             ../../../plot_load_latency.py \
                 --blue "../../../dat/virtio/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"* \
-                --blue-name "${blueq} ${bluei}" \
+                --blue-name "${blueq}" \
                 --red "../../../dat/virtio/acc_histogram_${redinfix1}_"*"_${redinfix2}_"* \
-                --red-name "${redq} ${redi}" \
+                --red-name "${redq}" \
                 --orange "../../../dat/virtio/acc_histogram_${orangeinfix1}_"*"_${orangeinfix2}_"* \
-                --orange-name "${orangeq} ${orangei}" \
+                --orange-name "${orangeq}" \
                 --logarithmic \
+                --compress \
                 --width 6 \
-                --height 4 \
+                --height 3 \
                 --output "load_latency_${infix}.pdf"
 
             ../../../plot_packet_loss.py \
                 --blue "../../../dat/virtio/output_${blueinfix1}_"*"_${blueinfix2}_"* \
-                --blue-name "${blueq} ${bluei}" \
+                --blue-name "${blueq}" \
                 --red "../../../dat/virtio/output_${redinfix1}_"*"_${redinfix2}_"* \
-                --red-name "${redq} ${redi}" \
+                --red-name "${redq}" \
                 --orange "../../../dat/virtio/output_${orangeinfix1}_"*"_${orangeinfix2}_"* \
-                --orange-name "${orangeq} ${orangei}" \
+                --orange-name "${orangeq}" \
                 --width 6 \
                 --height 2 \
                 --output "packet_loss_${infix}.pdf"

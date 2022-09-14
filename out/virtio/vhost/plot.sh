@@ -52,8 +52,9 @@ for m in 'pcvm' 'microvm'; do
                             --red "../../../dat/virtio/acc_histogram_${redinfix1}_"*"_${redinfix2}_"* \
                             --red-name "${redv}" \
                             --logarithmic \
+                            --compress \
                             --width 6 \
-                            --height 4 \
+                            --height 3 \
                             --output "load_latency_${infix}.pdf"
 
                         ../../../plot_packet_loss.py \

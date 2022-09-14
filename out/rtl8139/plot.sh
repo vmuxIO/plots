@@ -21,14 +21,14 @@ for n in 'bridge' 'macvtap'; do
                     --red-name "" \
                     --logarithmic \
                     --width 6 \
-                    --height 6 \
+                    --height 4 \
                     --output "load_latency_${infix}.pdf"
 
                 ../../plot_packet_loss.py \
                     --red "../../dat/rtl8139/output_${infix1}_"*"_${infix2}_"* \
                     --red-name "" \
                     --width 6 \
-                    --height 6 \
+                    --height 4 \
                     --output "packet_loss_${infix}.pdf"
             done
         done

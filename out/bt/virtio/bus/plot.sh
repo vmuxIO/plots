@@ -24,15 +24,15 @@ for n in 'bridge' 'macvtap'; do
             redinfix="${redinfix1}_${redinfix2}"
 
             echo "Plotting ${name}"
-            # ls "../../../dat/bt/virtio/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"*
-            # ls "../../../dat/bt/virtio/output_${blueinfix1}_"*"_${blueinfix2}_"*
-            # ls "../../../dat/bt/virtio/acc_histogram_${redinfix1}_"*"_${redinfix2}_"*
-            # ls "../../../dat/bt/virtio/output_${redinfix1}_"*"_${redinfix2}_"*
+            # ls "../../../../dat/bt/virtio/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"*
+            # ls "../../../../dat/bt/virtio/output_${blueinfix1}_"*"_${blueinfix2}_"*
+            # ls "../../../../dat/bt/virtio/acc_histogram_${redinfix1}_"*"_${redinfix2}_"*
+            # ls "../../../../dat/bt/virtio/output_${redinfix1}_"*"_${redinfix2}_"*
 
-            ../../../plot_load_latency.py \
-                --blue "../../../dat/bt/virtio/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"* \
+            ../../../../plot_load_latency.py \
+                --blue "../../../../dat/bt/virtio/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"* \
                 --blue-name "${bluem}" \
-                --red "../../../dat/bt/virtio/acc_histogram_${redinfix1}_"*"_${redinfix2}_"* \
+                --red "../../../../dat/bt/virtio/acc_histogram_${redinfix1}_"*"_${redinfix2}_"* \
                 --red-name "${redm}" \
                 --logarithmic \
                 --compress \
@@ -40,10 +40,10 @@ for n in 'bridge' 'macvtap'; do
                 --height 3 \
                 --output "load_latency_${infix}.pdf"
 
-            ../../../plot_packet_loss.py \
-                --blue "../../../dat/bt/virtio/output_${blueinfix1}_"*"_${blueinfix2}_"* \
+            ../../../../plot_packet_loss.py \
+                --blue "../../../../dat/bt/virtio/output_${blueinfix1}_"*"_${blueinfix2}_"* \
                 --blue-name "${bluem}" \
-                --red "../../../dat/bt/virtio/output_${redinfix1}_"*"_${redinfix2}_"* \
+                --red "../../../../dat/bt/virtio/output_${redinfix1}_"*"_${redinfix2}_"* \
                 --red-name "${redm}" \
                 --width 6 \
                 --height 2 \

@@ -42,15 +42,15 @@ for m in 'pcvm' 'microvm'; do
                         redinfix="${redinfix1}_${redinfix2}"
 
                         echo "Plotting ${name}"
-                        # ls "../../../dat/bt/virtio/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"*
-                        # ls "../../../dat/bt/virtio/output_${blueinfix1}_"*"_${blueinfix2}_"*
-                        # ls "../../../dat/bt/virtio/acc_histogram_${redinfix1}_"*"_${redinfix2}_"*
-                        # ls "../../../dat/bt/virtio/output_${redinfix1}_"*"_${redinfix2}_"*
+                        # ls "../../../../dat/bt/virtio/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"*
+                        # ls "../../../../dat/bt/virtio/output_${blueinfix1}_"*"_${blueinfix2}_"*
+                        # ls "../../../../dat/bt/virtio/acc_histogram_${redinfix1}_"*"_${redinfix2}_"*
+                        # ls "../../../../dat/bt/virtio/output_${redinfix1}_"*"_${redinfix2}_"*
 
-                        ../../../plot_load_latency.py \
-                            --blue "../../../dat/bt/virtio/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"* \
+                        ../../../../plot_load_latency.py \
+                            --blue "../../../../dat/bt/virtio/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"* \
                             --blue-name "${bluen}" \
-                            --red "../../../dat/bt/virtio/acc_histogram_${redinfix1}_"*"_${redinfix2}_"* \
+                            --red "../../../../dat/bt/virtio/acc_histogram_${redinfix1}_"*"_${redinfix2}_"* \
                             --red-name "${redn}" \
                             --logarithmic \
                             --compress \
@@ -58,10 +58,10 @@ for m in 'pcvm' 'microvm'; do
                             --height 3 \
                             --output "load_latency_${infix}.pdf"
 
-                        ../../../plot_packet_loss.py \
-                            --blue "../../../dat/bt/virtio/output_${blueinfix1}_"*"_${blueinfix2}_"* \
+                        ../../../../plot_packet_loss.py \
+                            --blue "../../../../dat/bt/virtio/output_${blueinfix1}_"*"_${blueinfix2}_"* \
                             --blue-name "${bluen}" \
-                            --red "../../../dat/bt/virtio/output_${redinfix1}_"*"_${redinfix2}_"* \
+                            --red "../../../../dat/bt/virtio/output_${redinfix1}_"*"_${redinfix2}_"* \
                             --red-name "${redn}" \
                             --width 6 \
                             --height 2 \

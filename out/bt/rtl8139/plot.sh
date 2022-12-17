@@ -13,19 +13,19 @@ for n in 'bridge' 'macvtap'; do
                 infix="${infix1}_${infix2}"
 
                 echo "Plotting ${name}"
-                # ls "../../dat/bt/rtl8139/acc_histogram_${infix1}_"*"_${infix2}_"*
-                # ls "../../dat/bt/rtl8139/output_${infix1}_"*"_${infix2}_"*
+                # ls "../../../dat/bt/rtl8139/acc_histogram_${infix1}_"*"_${infix2}_"*
+                # ls "../../../dat/bt/rtl8139/output_${infix1}_"*"_${infix2}_"*
 
-                ../../plot_load_latency.py \
-                    --red "../../dat/bt/rtl8139/acc_histogram_${infix1}_"*"_${infix2}_"* \
+                ../../../plot_load_latency.py \
+                    --red "../../../dat/bt/rtl8139/acc_histogram_${infix1}_"*"_${infix2}_"* \
                     --red-name "" \
                     --logarithmic \
                     --width 6 \
                     --height 4 \
                     --output "load_latency_${infix}.pdf"
 
-                ../../plot_packet_loss.py \
-                    --red "../../dat/bt/rtl8139/output_${infix1}_"*"_${infix2}_"* \
+                ../../../plot_packet_loss.py \
+                    --red "../../../dat/bt/rtl8139/output_${infix1}_"*"_${infix2}_"* \
                     --red-name "" \
                     --width 6 \
                     --height 4 \

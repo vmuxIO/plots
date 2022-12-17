@@ -25,23 +25,23 @@ redinfix2="$s"
 redinfix="${redinfix1}_${redinfix2}"
 
 echo "Plotting ${name}"
-# ls "../../../dat/bt/rtl8139-small-rates/acc_histogram_${infix1}_"*"_${infix2}_"*
-# ls "../../../dat/bt/rtl8139-small-rates/output_${infix1}_"*"_${infix2}_"*
+# ls "../../../../dat/bt/rtl8139-small-rates/acc_histogram_${infix1}_"*"_${infix2}_"*
+# ls "../../../../dat/bt/rtl8139-small-rates/output_${infix1}_"*"_${infix2}_"*
 
-../../../plot_load_latency.py \
-    --blue "../../../dat/bt/rtl8139-small-rates/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"* \
+../../../../plot_load_latency.py \
+    --blue "../../../../dat/bt/rtl8139-small-rates/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"* \
     --blue-name "${bluei}" \
-    --red "../../../dat/bt/rtl8139-small-rates/acc_histogram_${redinfix1}_"*"_${redinfix2}_"* \
+    --red "../../../../dat/bt/rtl8139-small-rates/acc_histogram_${redinfix1}_"*"_${redinfix2}_"* \
     --red-name "${redi}" \
     --logarithmic \
     --width 6 \
     --height 6 \
     --output "load_latency_${infix}.pdf"
 
-../../../plot_packet_loss.py \
-    --blue "../../../dat/bt/rtl8139-small-rates/output_${blueinfix1}_"*"_${blueinfix2}_"* \
+../../../../plot_packet_loss.py \
+    --blue "../../../../dat/bt/rtl8139-small-rates/output_${blueinfix1}_"*"_${blueinfix2}_"* \
     --blue-name "${bluei}" \
-    --red "../../../dat/bt/rtl8139-small-rates/output_${redinfix1}_"*"_${redinfix2}_"* \
+    --red "../../../../dat/bt/rtl8139-small-rates/output_${redinfix1}_"*"_${redinfix2}_"* \
     --red-name "${redi}" \
     --width 6 \
     --height 6 \

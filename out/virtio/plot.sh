@@ -31,11 +31,11 @@ for m in 'pcvm' 'microvm'; do
                             infix="${infix1}_${infix2}"
 
                             echo "Plotting ${name}"
-                            # ls "../../dat/virtio/acc_histogram_${infix1}_"*"_${infix2}_"*
-                            # ls "../../dat/virtio/output_${infix1}_"*"_${infix2}_"*
+                            # ls "../../dat/bt/virtio/acc_histogram_${infix1}_"*"_${infix2}_"*
+                            # ls "../../dat/bt/virtio/output_${infix1}_"*"_${infix2}_"*
 
                             ../../plot_load_latency.py \
-                                --red "../../dat/virtio/acc_histogram_${infix1}_"*"_${infix2}_"* \
+                                --red "../../dat/bt/virtio/acc_histogram_${infix1}_"*"_${infix2}_"* \
                                 --red-name "" \
                                 --logarithmic \
                                 --width 6 \
@@ -43,7 +43,7 @@ for m in 'pcvm' 'microvm'; do
                                 --output "load_latency_${infix}.pdf"
 
                             ../../plot_packet_loss.py \
-                                --red "../../dat/virtio/output_${infix1}_"*"_${infix2}_"* \
+                                --red "../../dat/bt/virtio/output_${infix1}_"*"_${infix2}_"* \
                                 --red-name "" \
                                 --width 6 \
                                 --height 6 \

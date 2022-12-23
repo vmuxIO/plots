@@ -1,13 +1,13 @@
 #!/bin/bash
 
 for m in 'pcvm' 'microvm'; do
-    for q in 'normal'; do # 'allregs' 'intstatus'; do
+    for q in 'normal' 'allregs' 'intstatus'; do
         if [ "$m" = "pcvm" ] && ([ "$q" = "allregs" ] || [ "$q" = "intstatus" ]); then
             continue
         fi
 
         for n in 'bridge' 'macvtap'; do
-            for i in 'ioregionfdoff'; do # 'ioregionfdon'; do
+            for i in 'ioregionfdoff' 'ioregionfdon'; do
                 if [ "$m" = "pcvm" ] && [ "$i" = "ioregionfdon" ]; then
                     continue
                 fi

@@ -30,24 +30,30 @@ for m in 'pcvm' 'microvm'; do
                             infix2="$s"
                             infix="${infix1}_${infix2}"
 
-                            echo "Plotting ${name}"
-                            # ls "../../../dat/gr/virtio/acc_histogram_${infix1}_"*"_${infix2}_"*
-                            # ls "../../../dat/gr/virtio/output_${infix1}_"*"_${infix2}_"*
+                            load_latency_output="load_latency_${infix}.pdf"
+                            if [ ! -f "${load_latency_output}" ]; then
+                                echo "Plotting load latency for ${name}"
 
-                            ../../../plot_load_latency.py \
-                                --red "../../../dat/gr/virtio/acc_histogram_${infix1}_"*"_${infix2}_"* \
-                                --red-name "" \
-                                --logarithmic \
-                                --width 6 \
-                                --height 6 \
-                                --output "load_latency_${infix}.pdf"
+                                ../../../plot_load_latency.py \
+                                    --red "../../../dat/gr/virtio/acc_histogram_${infix1}_"*"_${infix2}_"* \
+                                    --red-name "" \
+                                    --logarithmic \
+                                    --width 6 \
+                                    --height 6 \
+                                    --output "${load_latency_output}"
+                            fi
 
-                            ../../../plot_packet_loss.py \
-                                --red "../../../dat/gr/virtio/output_${infix1}_"*"_${infix2}_"* \
-                                --red-name "" \
-                                --width 6 \
-                                --height 6 \
-                                --output "packet_loss_${infix}.pdf"
+                            packet_loss_output="packet_loss_${infix}.pdf"
+                            if [ ! -f "${packet_loss_output}" ]; then
+                                echo "Plotting packet loss for ${name}"
+
+                                ../../../plot_packet_loss.py \
+                                    --red "../../../dat/gr/virtio/output_${infix1}_"*"_${infix2}_"* \
+                                    --red-name "" \
+                                    --width 6 \
+                                    --height 6 \
+                                    --output "${packet_loss_output}"
+                            fi
                         done
                     done
                 done

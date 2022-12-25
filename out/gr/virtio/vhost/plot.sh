@@ -23,7 +23,7 @@ for m in 'pcvm' 'microvm'; do
                         continue
                     fi
 
-                    for s in "60B"; do # "1020B"; do
+                    for s in "60B" "1020B"; do
                         name="$m $n $q $i $r $s"
                         infix="${m}_${n}_${q}_${i}_${r}_${s}"
 

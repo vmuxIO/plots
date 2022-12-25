@@ -5,7 +5,7 @@ for n in 'bridge' 'macvtap'; do
     for v in 'vhostoff' 'vhoston'; do
 
         r='xdp'
-        for s in "60B"; do # "1020B"; do
+        for s in "60B" "1020B"; do
             name="$m $n $v $r $s"
             infix="${m}_${n}_${v}_${r}_${s}"
 

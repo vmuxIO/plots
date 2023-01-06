@@ -1,7 +1,7 @@
 #!/bin/bash
 
 for m in 'pcvm' 'microvm'; do
-    for q in 'normal' 'allregs' 'intstatus'; do
+    for q in 'normal' 'allregs' 'intstatus' 'postwrallregs' 'postwrintstatus'; do
         if [ "$m" = "pcvm" ] && ([ "$q" = "allregs" ] || [ "$q" = "intstatus" ]); then
             continue
         fi
@@ -12,7 +12,7 @@ for m in 'pcvm' 'microvm'; do
                     if [ "$m" = "pcvm" ] && [ "$i" = "ioregionfdon" ]; then
                         continue
                     fi
-                    if ([ "$q" = "allregs" ] || [ "$q" = "intstatus" ]) && [ "$i" = "ioregionfdoff" ]; then
+                    if ([ "$q" = "allregs" ] || [ "$q" = "intstatus" ] || [ "$q" = "postwrallregs" ] || [ "$q" = "postwrintstatus" ]) && [ "$i" = "ioregionfdoff" ]; then
                         continue
                     fi
                     if [ "$q" = "normal" ] && [ "$i" = "ioregionfdon" ]; then
@@ -25,6 +25,9 @@ for m in 'pcvm' 'microvm'; do
                         fi
 
                         for s in "60B" "1020B"; do
+                            if ([ "$q" = "postwrallregs" ] || [ "$q" = "postwrintstatus" ]) && [ "$s" = "1020B" ]; then
+                                continue
+                            fi
                             name="$m $n $q $v $i $r $s"
                             infix1="${m}_${n}_${q}_${v}_${i}_${r}"
                             infix2="$s"

@@ -7,17 +7,22 @@ from re import search
 from os.path import basename, getsize
 
 
-COLORS = mcolors.CSS4_COLORS.keys()
-# COLORS = [
-#     'blue',
-#     'cyan',
-#     'green',
-#     'yellow',
-#     'orange',
-#     'red',
-#     'magenta',
-# ]
+COLORS = mcolors.BASE_COLORS.keys()
+LINES = {
+    'b': '-', 
+    'g': '--', 
+    'r': '-.', 
+    'c': ':',
+    }
+# COLORS = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 
+# Set global font size
+plt.rcParams['font.size'] = 10  # Sets the global font size to 14
+plt.rcParams['axes.labelsize'] = 10  # Sets axis label size
+plt.rcParams['xtick.labelsize'] = 8  # Sets x-tick label size
+plt.rcParams['ytick.labelsize'] = 8  # Sets y-tick label size
+plt.rcParams['legend.fontsize'] = 8  # Sets legend font size
+plt.rcParams['axes.titlesize'] = 16  # Sets title font size
 
 class LatencyHistogram(object):
     _filepath = None
@@ -92,6 +97,10 @@ class LoadLatencyPlot(object):
         self._color = color
 
     def plot(self):
+        hist, bin_edges = np.histogram(self._latency_histograms[0]._latencies, bins=400, density=True)
+        cdf = np.cumsum(hist) * (bin_edges[1] - bin_edges[0]);
+        cdf *= 100; # 1.0 -> 100%
+
         _x = [hist.rate() for hist in self._latency_histograms]
         _y25 = [hist.percentile25() for hist in self._latency_histograms]
         _y50 = [hist.percentile50() for hist in self._latency_histograms]
@@ -105,38 +114,14 @@ class LoadLatencyPlot(object):
         y75 = np.array(_y75)[order]
         y99 = np.array(_y99)[order]
 
-        self._plot25, = plt.plot(
-            x,
-            y25,
-            label=f'{self._name} 25th percentile',
-            linestyle=':',
-            color=self._color,
-            linewidth=1,
-        )
         self._plot50, = plt.plot(
-            x,
-            y50,
-            label=f'{self._name} 50th percentile',
+            bin_edges[1:],
+            cdf,
+            label=f'{self._name}',
             color=self._color,
-            linestyle='-',
+            linestyle=LINES[self._color],
             linewidth=1,
-            marker='x',
-        )
-        self._plot75, = plt.plot(
-            x,
-            y75,
-            label=f'{self._name} 75th percentile',
-            color=self._color,
-            linestyle='-.',
-            linewidth=1,
-        )
-        self._plot99, = plt.plot(
-            x,
-            y99,
-            label=f'{self._name} 99th percentile',
-            linestyle='--',
-            color=self._color,
-            linewidth=1,
+            marker='',
         )
 
 
@@ -215,8 +200,8 @@ def main():
     ax.set_axisbelow(True)
     if args.title:
         plt.title(args.title)
-    plt.xlabel('Load (kpps)')
-    plt.ylabel('Latency (ms)')
+    plt.xlabel('Latency (ms)')
+    plt.ylabel('Fraction (%)')
     plt.grid()
 
     plots = []
@@ -230,7 +215,7 @@ def main():
             plot.plot()
             plots.append(plot)
 
-    ax.set_yscale('log' if args.logarithmic else 'linear')
+    ax.set_xscale('log' if args.logarithmic else 'linear')
 
     legend = None
 
@@ -253,9 +238,10 @@ def main():
             ]),
             ncol=len(plots),
             prop={'size': 8},
+            loc="lower right",
         )
     else:
-        legend = plt.legend()
+        legend = plt.legend(loc="lower right")
 
     legend.get_frame().set_facecolor('white')
     legend.get_frame().set_alpha(0.8)

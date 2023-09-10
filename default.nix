@@ -8,5 +8,6 @@
 
       numpy
       matplotlib
+      seaborn
     ];
   }

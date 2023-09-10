@@ -3,8 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import argparse
+import seaborn as sns
+import pandas as pd
 from re import search, findall, MULTILINE
 from os.path import basename, getsize
+from typing import List
 
 
 COLORS = mcolors.CSS4_COLORS.keys()
@@ -17,7 +20,56 @@ COLORS = mcolors.CSS4_COLORS.keys()
 #     'red',
 #     'magenta',
 # ]
+TARGET_PACKET_LOSS = 1 # target packet loss in percent
 
+# # Example for find_x_intersections
+# x = np.array([0, 1, 2, 3, 4, 5])
+# y = np.array([1, 3, 2, 2.5, 0.5, 3])
+# y_target = 2
+#
+# print(find_x_intersections(x, y, y_target)) # [0.5, 3.25, 4.6]
+def find_x_intersections(x, y, y_target):
+    # Identify segments where line crosses y_target
+    below = y < y_target
+    above = y > y_target
+    cross = np.where(below[:-1] & above[1:] | above[:-1] & below[1:])[0]
+
+    x_intersections = []
+
+    # For each crossing segment, interpolate to find x value of intersection
+    for idx in cross:
+        dy = y[idx+1] - y[idx]
+        if dy != 0:  # Avoid division by zero
+            dx = x[idx+1] - x[idx]
+            factor = (y_target - y[idx]) / dy
+            x_intersection = x[idx] + factor * dx
+            x_intersections.append(x_intersection)
+    
+    return x_intersections
+
+def find_x_intersection(x, y, y_target):
+    x_intersections = find_x_intersections(np.array(x), np.array(y), y_target)
+    if len(x_intersections) != 1:
+        print(f'WARN: Invalid number of intersections at x={x_intersections}')
+    return x_intersections[0]
+
+def explode(mean: float, stddev: float) -> List[float]:
+    """
+    return a list of values that have @mean with @stddev
+    """
+    return [mean + stddev, mean - stddev]
+
+def stddev_to_series(df: pd.DataFrame, mean: str, stddev: str) -> pd.DataFrame:
+    all_rows = []
+    for _index, row in df.iterrows():
+        samples = explode(row[mean], row[stddev])
+        temp_df = pd.DataFrame([row] * len(samples))
+        temp_df[mean] = samples
+        all_rows.append(temp_df)
+        
+    ret = pd.concat(all_rows, ignore_index=True)
+    del ret[stddev]
+    return ret
 
 class MoonGenLog(object):
     _filepath = None
@@ -112,10 +164,14 @@ class MoonGenLog(object):
         return self._packet_loss_stddev
 
 
-class PacketLossPlot(object):
+class ThroughputDatapoint(object):
     _moongen_logs = None
     _name = None
     _color = None
+    y_max = None
+    y_max_err = None
+    y_tpl = None
+    y_tpl_err = None
 
     def __init__(self, moongen_log_filepaths, name, color):
         self._moongen_logs = []
@@ -127,7 +183,9 @@ class PacketLossPlot(object):
         self._name = name
         self._color = color
 
-    def plot(self):
+        self.find_throughputs()
+
+    def find_throughputs(self):
         data = {}
         for moongen_log in self._moongen_logs:
             rate = moongen_log.rate()
@@ -136,32 +194,73 @@ class PacketLossPlot(object):
             data[rate].append(moongen_log)
 
         _x = []
+        _y_loss = []
+        _y_loss_err = []
         _y = []
         _yerr = []
 
         for rate, logs in data.items():
             _x.append(rate)
-            _y.append(np.mean([log.packet_loss_avg() for log in logs]))
-            _yerr.append(np.mean([log.packet_loss_stddev() for log in logs]))
+            _y_loss.append(np.mean([log.packet_loss_avg() for log in logs]))
+            _y_loss_err.append(np.mean([log.packet_loss_stddev() for log in logs]))
+            _y.append(np.mean([log.rx_avg() for log in logs]))
+            _yerr.append(np.mean([log.rx_stddev() for log in logs]))
 
         order = np.argsort(_x)
         x = np.array(_x)[order]
         y = np.array(_y)[order]
         yerr = np.array(_yerr)[order]
+        y_loss = np.array(_y_loss)[order]
+        y_loss_err = np.array(_y_loss_err)[order]
 
-        plt.errorbar(
-            x,
-            y,
-            yerr=yerr,
-            label=self._name,
-            color=self._color,
-            ecolor=self._color,
-            linewidth=1,
-            linestyle='--',
-            marker='o',
-            elinewidth=1,
-            capsize=5,
-        )
+        # find max throuhgput
+        position = np.argmax(y)
+        self.y_max = y[position]
+        self.y_max_err = yerr[position]
+
+        # find throughput at n% packet loss
+        x_tpl = find_x_intersection(x, y_loss, TARGET_PACKET_LOSS)
+        self.y_tpl = np.interp(x_tpl, x, y) # throughput at target packet loss
+        self.y_tpl_err = np.interp(x_tpl, x, yerr) # throughput at target packet loss
+
+        # # plot packet loss to offered packet rate
+        # plt.errorbar(
+        #     x,
+        #     y,
+        #     yerr=yerr,
+        #     label=self._name,
+        #     color=self._color,
+        #     ecolor=self._color,
+        #     linewidth=1,
+        #     linestyle='--',
+        #     marker='o',
+        #     elinewidth=1,
+        #     capsize=5,
+        # )
+
+    def plot(self):
+        self.find_throughputs()
+
+        # Sample data
+        categories = [str(TARGET_PACKET_LOSS), 'any']
+        values_group1 = [self.y_tpl, self.y_max]
+        error_group1 = [self.y_tpl_err, self.y_max_err]
+        values_group2 = [10.1, 14.9]
+        error_group2 = [1, 1]
+        
+        # Convert the data to a pandas DataFrame
+        df_group1 = pd.DataFrame({'Category': categories, 'Values': values_group1, 'Stderr': error_group1, 'Group': 'vMux'})
+        df_group2 = pd.DataFrame({'Category': categories, 'Values': values_group2, 'Stderr': error_group2, 'Group': 'VFIO'})
+
+        # prepare stderr for seaborn
+        df_group1 = stddev_to_series(df_group1, "Values", "Stderr")
+        df_group2 = stddev_to_series(df_group2, "Values", "Stderr")
+        
+        df = pd.concat([df_group1, df_group2])
+        
+        # Plot using Seaborn
+        sns.barplot(x='Category', y='Values', hue='Group', data=df, palette='viridis', edgecolor='black')
+
 
 
 def setup_parser():
@@ -226,20 +325,20 @@ def main():
     ax.set_axisbelow(True)
     if args.title:
         plt.title(args.title)
-    plt.xlabel('Load (kpps)')
-    plt.ylabel('Packet Loss (%)')
     plt.grid()
-    plt.ylim(-5, 105)
+    # plt.ylim(-5, 105)
 
     for color in COLORS:
         if args.__dict__[color]:
-            plot = PacketLossPlot(
+            plot = ThroughputDatapoint(
                 moongen_log_filepaths=[h.name for h in args.__dict__[color]],
                 name=args.__dict__[f'{color}_name'],
                 color=color,
             )
             plot.plot()
 
+    plt.xlabel('Packet Loss (%)')
+    plt.ylabel('Throughput (Mpps)')
     legend = plt.legend()
     legend.get_frame().set_facecolor('white')
     legend.get_frame().set_alpha(0.8)

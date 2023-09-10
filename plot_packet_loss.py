@@ -116,8 +116,9 @@ class PacketLossPlot(object):
     _moongen_logs = None
     _name = None
     _color = None
+    _absolute = None
 
-    def __init__(self, moongen_log_filepaths, name, color):
+    def __init__(self, moongen_log_filepaths, name, color, absolute):
         self._moongen_logs = []
         for filepath in moongen_log_filepaths:
             moongen_log = MoonGenLog(filepath)
@@ -126,6 +127,7 @@ class PacketLossPlot(object):
             self._moongen_logs.append(moongen_log)
         self._name = name
         self._color = color
+        self._absolute = absolute
 
     def plot(self):
         data = {}
@@ -141,8 +143,12 @@ class PacketLossPlot(object):
 
         for rate, logs in data.items():
             _x.append(rate)
-            _y.append(np.mean([log.packet_loss_avg() for log in logs]))
-            _yerr.append(np.mean([log.packet_loss_stddev() for log in logs]))
+            if not self._absolute:
+                _y.append(np.mean([log.packet_loss_avg() for log in logs]))
+                _yerr.append(np.mean([log.packet_loss_stddev() for log in logs]))
+            else:
+                _y.append(np.mean([log.rx_avg() for log in logs]))
+                _yerr.append(np.mean([log.rx_stddev() for log in logs]))
 
         order = np.argsort(_x)
         x = np.array(_x)[order]
@@ -190,6 +196,14 @@ def setup_parser():
                              (default: packet_loss.pdf)''',
                         default='packet_loss.pdf'
                         )
+    parser.add_argument('-l', '--logarithmic',
+                        action='store_true',
+                        help='Plot logarithmic packet loss axis',
+                        )
+    parser.add_argument('-a', '--absolute',
+                        action='store_true',
+                        help='Plot absolute number of packets received back at the load gen instead of packet loss',
+                        )
     for color in COLORS:
         parser.add_argument(f'--{color}',
                             type=argparse.FileType('r'),
@@ -226,10 +240,16 @@ def main():
     ax.set_axisbelow(True)
     if args.title:
         plt.title(args.title)
+    if not args.absolute:
+        plt.ylabel('Packet Loss (%)')
+    else:
+        plt.ylabel('Throughput (kpps)')
     plt.xlabel('Load (kpps)')
-    plt.ylabel('Packet Loss (%)')
     plt.grid()
-    plt.ylim(-5, 105)
+    if not args.logarithmic and not args.absolute:
+        plt.ylim(-5, 105)
+        # plt.ylim(-1, 2)
+    ax.set_yscale('log' if args.logarithmic else 'linear')
 
     for color in COLORS:
         if args.__dict__[color]:
@@ -237,6 +257,7 @@ def main():
                 moongen_log_filepaths=[h.name for h in args.__dict__[color]],
                 name=args.__dict__[f'{color}_name'],
                 color=color,
+                absolute=args.absolute,
             )
             plot.plot()
 

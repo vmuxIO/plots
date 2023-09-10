@@ -51,6 +51,12 @@ def find_x_intersection(x, y, y_target):
     x_intersections = find_x_intersections(np.array(x), np.array(y), y_target)
     if len(x_intersections) != 1:
         print(f'WARN: Invalid number of intersections at x={x_intersections}')
+    if len(x_intersections) == 0:
+        # assuming that the function is monotonically increasing:
+        if y_target < y[0]:
+            return x[0]
+        else:
+            return x[-1]
     return x_intersections[0]
 
 def explode(mean: float, stddev: float) -> List[float]:
@@ -172,6 +178,7 @@ class ThroughputDatapoint(object):
     y_max_err = None
     y_tpl = None
     y_tpl_err = None
+    df = None
 
     def __init__(self, moongen_log_filepaths, name, color):
         self._moongen_logs = []
@@ -184,6 +191,8 @@ class ThroughputDatapoint(object):
         self._color = color
 
         self.find_throughputs()
+
+        self.prepare_df()
 
     def find_throughputs(self):
         data = {}
@@ -238,28 +247,17 @@ class ThroughputDatapoint(object):
         #     capsize=5,
         # )
 
-    def plot(self):
-        self.find_throughputs()
-
+    def prepare_df(self):
         # Sample data
         categories = [str(TARGET_PACKET_LOSS), 'any']
-        values_group1 = [self.y_tpl, self.y_max]
-        error_group1 = [self.y_tpl_err, self.y_max_err]
-        values_group2 = [10.1, 14.9]
-        error_group2 = [1, 1]
+        values = [self.y_tpl, self.y_max]
+        errors = [self.y_tpl_err, self.y_max_err]
         
         # Convert the data to a pandas DataFrame
-        df_group1 = pd.DataFrame({'Category': categories, 'Values': values_group1, 'Stderr': error_group1, 'Group': 'vMux'})
-        df_group2 = pd.DataFrame({'Category': categories, 'Values': values_group2, 'Stderr': error_group2, 'Group': 'VFIO'})
+        df = pd.DataFrame({'Category': categories, 'Values': values, 'Stderr': errors, 'Group': self._name})
 
         # prepare stderr for seaborn
-        df_group1 = stddev_to_series(df_group1, "Values", "Stderr")
-        df_group2 = stddev_to_series(df_group2, "Values", "Stderr")
-        
-        df = pd.concat([df_group1, df_group2])
-        
-        # Plot using Seaborn
-        sns.barplot(x='Category', y='Values', hue='Group', data=df, palette='viridis', edgecolor='black')
+        self.df = stddev_to_series(df, "Values", "Stderr")
 
 
 
@@ -288,6 +286,10 @@ def setup_parser():
                         help='''Path to the output plot
                              (default: packet_loss.pdf)''',
                         default='packet_loss.pdf'
+                        )
+    parser.add_argument('-l', '--logarithmic',
+                        action='store_true',
+                        help='Plot logarithmic latency axis',
                         )
     for color in COLORS:
         parser.add_argument(f'--{color}',
@@ -327,18 +329,25 @@ def main():
         plt.title(args.title)
     plt.grid()
     # plt.ylim(-5, 105)
+    ax.set_yscale('log' if args.logarithmic else 'linear')
 
+    dfs = []
     for color in COLORS:
         if args.__dict__[color]:
-            plot = ThroughputDatapoint(
+            throughput = ThroughputDatapoint(
                 moongen_log_filepaths=[h.name for h in args.__dict__[color]],
                 name=args.__dict__[f'{color}_name'],
                 color=color,
             )
-            plot.plot()
+            dfs += [throughput.df]
+        
+    df = pd.concat(dfs)
+            
+    # Plot using Seaborn
+    sns.barplot(x='Category', y='Values', hue='Group', data=df, palette='viridis', edgecolor='black')
 
     plt.xlabel('Packet Loss (%)')
-    plt.ylabel('Throughput (Mpps)')
+    plt.ylabel('Throughput (kpps)')
     legend = plt.legend()
     legend.get_frame().set_facecolor('white')
     legend.get_frame().set_alpha(0.8)

@@ -45,7 +45,7 @@ class LatencyHistogram(object):
         self._rate = int(search(r'(\d+?)kpps', self._filename).group(1))
 
         self._data = np.genfromtxt(self._filepath, delimiter=',')
-        self._data[:, 0] /= 1e6
+        self._data[:, 0] /= 1e3  # Convert to microseconds
 
         self._latencies = []
         for latency, count in self._data:
@@ -200,7 +200,7 @@ def main():
     ax.set_axisbelow(True)
     if args.title:
         plt.title(args.title)
-    plt.xlabel('Latency (ms)')
+    plt.xlabel('Latency ($\mu s$)')
     plt.ylabel('Fraction (%)')
     plt.grid()
 
@@ -216,6 +216,7 @@ def main():
             plots.append(plot)
 
     ax.set_xscale('log' if args.logarithmic else 'linear')
+    # plt.xlim(0, 1)
 
     legend = None
 

@@ -28,13 +28,13 @@ print(f"{perc*100}% of functions are called called {per_hour} times per hour or 
 
 r = range(counts.min(), counts.max() + 1)
 # Plot the histogram using Seaborn
-sns.histplot(data=counts, bins=100) #, stat="percent")
-# sns.histplot(data=normed_counts, bins=100, stat="percent", cumulative=True)
+# sns.histplot(data=counts, bins=100) #, stat="percent")
+sns.histplot(data=normed_counts, bins=100, stat="percent", cumulative=True)
 
 # Set titles and labels
 plt.title('Histogram of Value Counts in Column')
-plt.xlabel('Invocation frequency')
-plt.ylabel('Number of functions')
+plt.xlabel('fraction (%) of requests')
+plt.ylabel('fraction (%) of functions')
 # plt.yscale('log')
 # plt.xlim(0, 100000)
 # plt.ylim(0, 25)

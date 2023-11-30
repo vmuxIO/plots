@@ -118,14 +118,21 @@ class MoonGenLog(object):
             self._valid = False
             return
 
-        rgx_rate = r'(\d+?) \(StdDev (\d+?)\) Mbit/s'
+        # bitrate
+        # rgx_rate = r'(\d+?) \(StdDev (\d+?)\) Mbit/s'
+        # self._tx_avg = int(tx_search.group(1))
+        # ...
+
+        # packet rate
+        rgx_rate = r'(\d+?)\.(\d+?) \(StdDev (\d+?)\.(\d+?)\) Mpps,'
         tx_search = search(rgx_rate, tx_line)
         rx_search = search(rgx_rate, rx_line)
 
-        self._tx_avg = int(tx_search.group(1))
-        self._tx_stddev = int(tx_search.group(2))
-        self._rx_avg = int(rx_search.group(1))
-        self._rx_stddev = int(rx_search.group(2))
+        # this is kpps now instead of bitrate
+        self._tx_avg =    float(f'{tx_search.group(1)}.{tx_search.group(2)}') * 1000
+        self._tx_stddev = float(f'{tx_search.group(3)}.{tx_search.group(4)}') * 1000
+        self._rx_avg =    float(f'{rx_search.group(1)}.{rx_search.group(2)}') * 1000
+        self._rx_stddev = float(f'{rx_search.group(3)}.{rx_search.group(4)}') * 1000
 
         if self._tx_stddev > 0.2 * self._tx_avg:
             print(f'Invalid log file: {self._filepath}, ' +
@@ -352,6 +359,8 @@ def main():
 
     plt.xlabel('Packet Loss (%)')
     plt.ylabel('Throughput (kpps)')
+    for container in ax.containers:
+        ax.bar_label(container, fmt='%.0f')
     # legend = plt.legend()
     # legend.get_frame().set_facecolor('white')
     # legend.get_frame().set_alpha(0.8)

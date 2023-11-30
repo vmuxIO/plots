@@ -13,8 +13,8 @@ python3 ../plot_throughput_bars.py -W 5 -H 2.6 -l \
   --blue-name "vMux-pt" --blue ../dat/vfio_vs_vmux2/output_pcvm_vmux_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_30s_rep*.log \
   --cyan-name "Qemu-pt" --cyan ../dat/vfio_vs_vmux2/output_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_30s_rep*.log \
    --green-name "Qemu-virtio" --green ../dat/gr/virtio2/output_pcvm_bridge_normal_vhoston_ioregionfdoff_moongen_*kpps_60B_30s_rep*.log \
-   --yellow-name "Qemu-e1000" --yellow ../dat/outputs8-30.11./output_pcvm_bridge-e1000_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
-   --red-name "vMux-emu" --red ../dat/outputs8-30.11./output_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log
+   --yellow-name "Qemu-e1000" --yellow ../dat/vmux-emu/output_pcvm_bridge-e1000_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
+   --red-name "vMux-emu" --red ../dat/vmux-emu/output_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log
 
 # # this (big packets) is boring
 # python3 ../plot_throughput_bars.py -W 3.3 -H 2 -l \

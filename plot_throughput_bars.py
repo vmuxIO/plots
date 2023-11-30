@@ -344,13 +344,17 @@ def main():
     df = pd.concat(dfs)
             
     # Plot using Seaborn
-    sns.barplot(x='Category', y='Values', hue='Group', data=df, palette='viridis', edgecolor='black')
+    sns.barplot(x='Category', y='Values', hue='Group', data=df, palette='colorblind', edgecolor='black')
+    sns.move_legend(
+        ax, "lower center",
+        bbox_to_anchor=(.5, 1), ncol=3, title=None, frameon=False,
+    )
 
     plt.xlabel('Packet Loss (%)')
     plt.ylabel('Throughput (kpps)')
-    legend = plt.legend()
-    legend.get_frame().set_facecolor('white')
-    legend.get_frame().set_alpha(0.8)
+    # legend = plt.legend()
+    # legend.get_frame().set_facecolor('white')
+    # legend.get_frame().set_alpha(0.8)
     fig.tight_layout()
     plt.savefig(args.output.name)
     plt.close()

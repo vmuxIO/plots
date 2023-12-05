@@ -10,9 +10,12 @@ from os.path import basename, getsize
 COLORS = mcolors.BASE_COLORS.keys()
 LINES = {
     'b': '-', 
-    'g': '--', 
+    'g': ':', 
     'r': '-.', 
     'c': ':',
+    'y': '-',
+    'm': ':',
+    'k': '--',
     }
 # COLORS = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 

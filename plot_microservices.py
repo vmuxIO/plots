@@ -5,11 +5,10 @@ import matplotlib.colors as mcolors
 import argparse
 import seaborn as sns
 import pandas as pd
-from pandas import DataFrame
 from re import search, findall, MULTILINE
 from os.path import basename, getsize
 from typing import List
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass
 
 
 COLORS = mcolors.CSS4_COLORS.keys()
@@ -24,18 +23,17 @@ COLORS = mcolors.CSS4_COLORS.keys()
 # ]
 
 hue_map = {
-    '2.0_bridge_-1.0_overall': 'qemu-virtio',
-    '2.0_bridge-e1000_-1.0_overall': 'qemu-e1000',
-    '2.0_bridge-vhost_-1.0_overall': 'qemu-vhost',
-    '2.0_vfio_-1.0_overall': 'qemu-pt',
-    '2.0_vmux-dpdk-e810_-1.0_overall': 'vmux-e810'
+    '9_vmux-dpdk-e810_hardware': 'vmux-emu (hardware)',
+    '9_vmux-med_hardware': 'vmux-med (hardware)',
+    '9_vmux-dpdk-e810_software': 'vmux-emu (software)',
+    '9_vmux-med_software': 'vmux-med (software)',
 }
 
-YLABEL = 'Per-VM request rate (req/s)'
-XLABEL = 'Nr. of VMs'
+YLABEL = 'Latency (ms)'
+XLABEL = 'Offered load (req/s)'
 
 def map_hue(df_hue, hue_map):
-    return df_hue.apply(lambda row: hue_map.get(str(row), row))
+    return df_hue.apply(lambda row: hue_map[str(row)])
 
 
 
@@ -63,7 +61,7 @@ def setup_parser():
                         type=argparse.FileType('w+'),
                         help='''Path to the output plot
                              (default: packet_loss.pdf)''',
-                        default='ycsb.pdf'
+                        default='microservices.pdf'
                         )
     parser.add_argument('-l', '--logarithmic',
                         action='store_true',
@@ -95,57 +93,71 @@ def parse_args(parser):
 
     return args
 
-def parse_filename(self, filename: str):
-    ret = dict()
-    parts = filename.split("_")
-    ret['becnhmark'] = parts[0]
-    ret['num_vms']
 
+@dataclass
+class MicroserviceDataPoint:
+    name: str
+    color: str
+    latency_mean: float
+    latency_stddev: float
+    rps: float
+    offered_load_rps: int
 
-def parse_result(self, repetition: int, vm_number: int) -> DataFrame:
-    def find(haystack: List[str], needle: str) -> str:
-        matches = [line for line in haystack if needle in line ]
-        if len(matches) != 1:
-            raise Exception("Seemingly an error occured during execution")
-        value = matches[0].split(" ")[-1]
-        return value
+class MicroserviceTest:
+    def __init__(self, log_filepaths: List[str], name: str, color: str):
+        self.log_filepaths = log_filepaths
+        self.name = name
+        self.color = color
+        self.results = dict()
+        # self.latencies = dict() # (mean in ms, stddev)
+        # self.rps = dict() # requests per second
 
-    with open(self.output_path_per_vm(repetition, vm_number), 'r') as file:
-        lines = file.readlines()
-        data = []
-        test_spec = {
-            **asdict(self), # put selfs member variables and values into this dict
-            "repetition": repetition,
-            "vm_number": vm_number,
-        }
-        data += [{
-            **test_spec,
-            "op": "read",
-            "avg_us": float(find(lines, "[READ], AverageLatency(us),")),
-            "95th_us": float(find(lines, "[READ], 95thPercentileLatency(us),")),
-            "99th_us": float(find(lines, "[READ], 99thPercentileLatency(us),")),
-            "ops": int(find(lines, "[READ], Operations,"))
-        }]
-        data += [{
-            **test_spec,
-            "op": "update",
-            "avg_us": float(find(lines, "[UPDATE], AverageLatency(us),")),
-            "95th_us": float(find(lines, "[UPDATE], 95thPercentileLatency(us),")),
-            "99th_us": float(find(lines, "[UPDATE], 99thPercentileLatency(us),")),
-            "ops": int(find(lines, "[UPDATE], Operations,"))
-        }]
-        data += [{
-            **test_spec, # merge test_spec dict with this dict
-            "op": "overall",
-            "runtime": float(find(lines, "[OVERALL], RunTime(ms),")),
-            "ops_per_sec": float(find(lines, "[OVERALL], Throughput(ops/sec),"))
-        }]
-        return DataFrame(data=data)
+        for filename in log_filepaths:
+            with open(filename, 'r') as f:
+                lines = f.readlines()
 
+                # extract offered_load_rps
+                offered_load_rps = filename.split('_')[-2]
+                offered_load_rps = offered_load_rps.split('rps')[0]
+                offered_load_rps = int(offered_load_rps)
 
-def cast_column(df, column: str, caster = lambda i: int(i)):
-    df[column] = df.apply(lambda row: caster(row[column]), axis=1)
+                # extract latencies
+                filtered = list(filter(lambda line: line.startswith("#[Mean"), lines))
+                assert len(filtered) == 1
+                line = filtered[0]
+                inner = line.strip("#[]\n \t")
+                key_values = inner.split(',')
+                mean_value = key_values[0].split("=")[1]
+                stddev_value = key_values[1].split("=")[1]
+                mean_value = float(mean_value)
+                stddev_value = float(stddev_value)
+                # self.latencies[filename] = (mean_value, stddev_value)
 
+                # extract requests per second
+                filtered = list(filter(lambda line: line.startswith("Requests/sec:"), lines))
+                assert len(filtered) == 1
+                line = filtered[0]
+                rps = line.split(':')[1]
+                rps = float(rps)
+                # self.latencies[filename] = rps
+
+                self.results[filename] = MicroserviceDataPoint(
+                    name=self.name,
+                    color=self.color,
+                    latency_mean=mean_value,
+                    latency_stddev=stddev_value,
+                    rps=rps,
+                    offered_load_rps=offered_load_rps,
+                )
+
+    def toDataFrame(self):
+        return pd.DataFrame([vars(v) for v in self.results.values()])
+
+    def __str__(self):
+        return f'{self.name} ({self.color})'
+
+    def __repr__(self):
+        return self.__str__()
 
 
 def main():
@@ -161,31 +173,32 @@ def main():
     # plt.xlim(0, 0.83)
     ax.set_yscale('log' if args.logarithmic else 'linear')
 
-    dfs = []
+    data_lines = []
     for color in COLORS:
         if args.__dict__[color]:
-            dfs += [ pd.read_csv(f.name) for f in args.__dict__[color] ]
+            data_lines += [MicroserviceTest(
+                log_filepaths=[f.name for f in args.__dict__[color]],
+                name=args.__dict__[f'{color}_name'],
+                color=color,
+            )]
+            # dfs += [ pd.read_csv(f.name, sep='\\s+') for f in args.__dict__[color] ]
             # throughput = ThroughputDatapoint(
             #     moongen_log_filepaths=[f.name for f in args.__dict__[color]],
             #     name=args.__dict__[f'{color}_name'],
             #     color=color,
             # )
             # dfs += color_dfs
-    df = pd.concat(dfs, ignore_index=True)
-    del df['Unnamed: 0']
-    df = df[df.op == 'overall'] # only the overall stat has ops_per_sec
-    hue = ['repetitions', 'num_vms', 'interface', 'fastclick']
+
+    dfs = [d.toDataFrame() for d in data_lines]
+    df = pd.concat(dfs)
+    # hue = ['repetitions', 'num_vms', 'interface', 'fastclick']
     # groups = df.groupby(hue)
     # summary = df.groupby(hue)['rxMppsCalc'].describe()
-    df_hue = df.apply(lambda row: '_'.join(str(row[col]) for col in ['repetitions', 'interface', 'rps', 'op']), axis=1)
-    df_hue = map_hue(df_hue, hue_map)
-    df['aggregate_ops_per_sec'] = df.apply(lambda row: row['num_vms'] * row['ops_per_sec'], axis=1)
-    # df['aggregate_ops_per_sec'] = df.apply(lambda row: print(row), axis=1)
-    # cast_column(df, 'num_vms', lambda i: int(i))
-    cast_column(df, 'num_vms', int)
+    # df_hue = df.apply(lambda row: '_'.join(str(row.color), str(row.name)), axis=1)
+    # df_hue = map_hue(df_hue, hue_map)
 
     # Plot using Seaborn
-    sns.catplot(x='num_vms', y='ops_per_sec', hue=df_hue, data=df, palette='colorblind', kind='point',
+    sns.catplot(x='offered_load_rps', y='latency_mean', hue=df['name'], data=df, palette='colorblind', kind='point',
                 capsize=.05,  # errorbar='sd'
                 )
     # sns.move_legend(
@@ -195,7 +208,7 @@ def main():
     #
     plt.xlabel(XLABEL)
     plt.ylabel(YLABEL)
-    plt.ylim(bottom=0)
+    plt.ylim(0, 10)
     # for container in ax.containers:
     #     ax.bar_label(container, fmt='%.0f')
 

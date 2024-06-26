@@ -28,7 +28,9 @@ hue_map = {
     '2.0_bridge-e1000_-1.0_overall': 'qemu-e1000',
     '2.0_bridge-vhost_-1.0_overall': 'qemu-vhost',
     '2.0_vfio_-1.0_overall': 'qemu-pt',
-    '2.0_vmux-dpdk-e810_-1.0_overall': 'vmux-e810'
+    '2.0_vmux-dpdk-e810_-1.0_overall': 'vmux-emu-e810',
+    '2.0_vmux-emu_-1.0_overall': 'vmux-emu-e1000',
+    '2.0_vmux-med_-1.0_overall': 'vmux-med-e810'
 }
 
 YLABEL = 'Per-VM request rate (req/s)'

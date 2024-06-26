@@ -22,17 +22,21 @@ COLORS = mcolors.CSS4_COLORS.keys()
 # ]
 
 hue_map = {
-    '9_vmux-dpdk-e810_hardware': 'vmux-emu (hardware)',
-    '9_vmux-med_hardware': 'vmux-med (hardware)',
-    '9_vmux-dpdk-e810_software': 'vmux-emu (software)',
-    '9_vmux-med_software': 'vmux-med (software)',
+    '9_vmux-dpdk-e810_hardware': 'vmux-emu (w/ rte_flow)',
+    '9_vmux-med_hardware': 'vmux-med (w/ rte_flow)',
+    '9_vmux-dpdk-e810_software': 'vmux-emu',
+    '9_vmux-med_software': 'vmux-med',
+    '1_vfio_software': 'qemu-pt',
+    '1_vmux-pt_software': 'vmux-pt',
+    '1_vmux-pt_hardware': 'vmux-pt (w/ rte_flow)',
+    '1_vfio_hardware': 'qemu-pt (w/ rte_flow)',
 }
 
 YLABEL = 'Rx throughput (Mpps)'
 XLABEL = 'Nr. of VMs'
 
 def map_hue(df_hue, hue_map):
-    return df_hue.apply(lambda row: hue_map[str(row)])
+    return df_hue.apply(lambda row: hue_map.get(str(row), row))
 
 
 
@@ -134,7 +138,8 @@ def main():
     #
     plt.xlabel(XLABEL)
     plt.ylabel(YLABEL)
-    plt.ylim(0, 1)
+    # plt.ylim(0, 1)
+    plt.ylim(bottom=0)
     # for container in ax.containers:
     #     ax.bar_label(container, fmt='%.0f')
 

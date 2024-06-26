@@ -33,7 +33,7 @@ YLABEL = 'Latency (ms)'
 XLABEL = 'Offered load (req/s)'
 
 def map_hue(df_hue, hue_map):
-    return df_hue.apply(lambda row: hue_map[str(row)])
+    return df_hue.apply(lambda row: hue_map.get(str(row), row))
 
 
 
@@ -114,6 +114,7 @@ class MicroserviceTest:
 
         for filename in log_filepaths:
             with open(filename, 'r') as f:
+                print(filename)
                 lines = f.readlines()
 
                 # extract offered_load_rps
@@ -123,7 +124,9 @@ class MicroserviceTest:
 
                 # extract latencies
                 filtered = list(filter(lambda line: line.startswith("#[Mean"), lines))
-                assert len(filtered) == 1
+                if len(filtered) != 1:
+                    print(f'Warning: Skipping {filename}. It doesnt contain valid measurement results.')
+                    continue
                 line = filtered[0]
                 inner = line.strip("#[]\n \t")
                 key_values = inner.split(',')

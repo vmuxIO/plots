@@ -7,15 +7,16 @@ from re import search
 from os.path import basename, getsize
 
 
-COLORS = mcolors.BASE_COLORS.keys()
+COLORS = mcolors.CSS4_COLORS.keys()
 LINES = {
-    'b': '-', 
-    'g': ':', 
-    'r': '-.', 
-    'c': ':',
-    'y': '-',
-    'm': ':',
-    'k': '--',
+    'blue': '-',
+    'green': ':',
+    'red': '-.',
+    'cyan': ':',
+    'yellow': '-',
+    'magenta': ':',
+    'orange': '--',
+    'brown': '--',
     }
 # COLORS = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 
@@ -96,6 +97,8 @@ class LoadLatencyPlot(object):
         for filepath in histogram_filepaths:
             if getsize(filepath) > 0:
                 self._latency_histograms.append(LatencyHistogram(filepath))
+        if len(self._latency_histograms) == 0:
+            print(f"WARN: list of latency histograms empty for {histogram_filepaths}")
         self._name = name
         self._color = color
 

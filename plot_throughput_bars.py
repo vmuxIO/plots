@@ -10,7 +10,8 @@ from os.path import basename, getsize
 from typing import List
 
 
-COLORS = mcolors.CSS4_COLORS.keys()
+COLORS = [ str(i) for i in range(20) ]
+# COLORS = mcolors.CSS4_COLORS.keys()
 # COLORS = [
 #     'blue',
 #     'cyan',
@@ -44,7 +45,7 @@ def find_x_intersections(x, y, y_target):
             factor = (y_target - y[idx]) / dy
             x_intersection = x[idx] + factor * dx
             x_intersections.append(x_intersection)
-    
+
     return x_intersections
 
 def find_x_intersection(x, y, y_target):
@@ -72,7 +73,7 @@ def stddev_to_series(df: pd.DataFrame, mean: str, stddev: str) -> pd.DataFrame:
         temp_df = pd.DataFrame([row] * len(samples))
         temp_df[mean] = samples
         all_rows.append(temp_df)
-        
+
     ret = pd.concat(all_rows, ignore_index=True)
     del ret[stddev]
     return ret
@@ -261,7 +262,7 @@ class ThroughputDatapoint(object):
         categories = [str(TARGET_PACKET_LOSS), 'any']
         values = [self.y_tpl, self.y_max]
         errors = [self.y_tpl_err, self.y_max_err]
-        
+
         # Convert the data to a pandas DataFrame
         df = pd.DataFrame({'Category': categories, 'Values': values, 'Stderr': errors, 'Group': self._name})
 
@@ -349,11 +350,11 @@ def main():
                 color=color,
             )
             dfs += [throughput.df]
-        
+
     df = pd.concat(dfs)
-            
+
     # Plot using Seaborn
-    sns.barplot(x='Category', y='Values', hue='Group', data=df, palette='colorblind', edgecolor='black')
+    sns.barplot(x='Category', y='Values', hue='Group', data=df, palette='colorblind', edgecolor='dimgray')
     sns.move_legend(
         ax, "lower center",
         bbox_to_anchor=(.5, 1), ncol=3, title=None, frameon=False,

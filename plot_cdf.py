@@ -17,6 +17,7 @@ LINES = {
     'magenta': ':',
     'orange': '--',
     'brown': '--',
+    'violet': '--',
     }
 # COLORS = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 
@@ -207,10 +208,12 @@ def main():
     if args.title:
         plt.title(args.title)
     plt.xlabel('Latency ($\mu s$)')
-    plt.ylabel('Fraction (%)')
+    plt.ylabel('CDF (%)')
     plt.grid()
 
     plots = []
+
+    print(vars(args))
     for color in COLORS:
         if args.__dict__[color]:
             plot = LoadLatencyPlot(

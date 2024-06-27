@@ -140,6 +140,7 @@ def main():
                 # kind='bar',
                 # capsize=.05,  # errorbar='sd'
                 # log_scale=log_scale,
+                ax=ax,
                 )
     # sns.move_legend(
     #     ax, "lower center",
@@ -160,6 +161,23 @@ def main():
         plt.ylim(bottom=0)
     # for container in ax.containers:
     #     ax.bar_label(container, fmt='%.0f')
+
+    # Define some hatches
+    hatches = ['-', '+', 'x', '\\', '*', 'o', '.O', '//']
+
+    # iterate through each container, hatch, and legend handle
+    for container, hatch, handle in zip(ax.containers, hatches, ax.get_legend().legend_handles[::-1]):
+        # update the hatching in the legend handle
+        handle.set_hatch(hatch)
+        # iterate through each rectangle in the container
+        for rectangle in container:
+            # set the rectangle hatch
+            rectangle.set_hatch(hatch)
+
+    # # Loop over the bars
+    # for i,thisbar in enumerate(bar.patches):
+    #     # Set a different hatch for each bar
+    #     thisbar.set_hatch(hatches[i % len(hatches)])
 
     # legend = plt.legend()
     # legend.get_frame().set_facecolor('white')

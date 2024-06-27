@@ -8,6 +8,7 @@ import pandas as pd
 from re import search, findall, MULTILINE
 from os.path import basename, getsize
 from typing import List, Any
+from plotting import HATCHES as hatches
 
 
 COLORS = [ str(i) for i in range(20) ]
@@ -97,7 +98,6 @@ def parse_args(parser):
 
     return args
 
-hatches = ['O', '\\\\', '*', 'o', 'xx', '.O', '//', '..']
 # hatches = ['/', '\\', '|', '-', '+', 'x', 'o', 'O']
 hatches_used = 0
 

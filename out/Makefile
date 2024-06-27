@@ -115,7 +115,7 @@ me-cdf.pdf: $(DATA_FILES) ../plot_cdf.py
 # --red-name "vfio wtf" --red dat/vfio_vs_vmux2/acc_histogram_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_10000kpps_1020B_30s.csv \
 
 microbenchmark-bars.pdf: $(DATA_FILES) ../plot_throughput_bars.py
-	python3 ../plot_throughput_bars.py -W 5 -H 2.6 -l \
+	python3 ../plot_throughput_bars.py -W 5 -H 2.7 -l \
   	-o microbenchmark-bars.pdf \
   	--1-name "vMux-pt" --1 $(DATA_DIR)/autotest/output_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \
   	--2-name "Qemu-pt" --2 $(DATA_DIR)/autotest/output_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \

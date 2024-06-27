@@ -8,6 +8,7 @@ import pandas as pd
 from re import search, findall, MULTILINE
 from os.path import basename, getsize
 from typing import List
+from plotting import HATCHES as hatches
 
 
 COLORS = [ str(i) for i in range(20) ]
@@ -354,16 +355,33 @@ def main():
     df = pd.concat(dfs)
 
     # Plot using Seaborn
-    sns.barplot(x='Category', y='Values', hue='Group', data=df, palette='colorblind', edgecolor='dimgray')
+    bar = sns.barplot(x='Category', y='Values', hue='Group', data=df, palette='colorblind', edgecolor='dimgray')
     sns.move_legend(
         ax, "lower center",
         bbox_to_anchor=(.5, 1), ncol=3, title=None, frameon=False,
+        borderaxespad=2.5, # put some space between the legend and the plot
     )
+
+    # Fix the legend hatches
+    for i, legend_patch in enumerate(ax.get_legend().legend_handles):
+        hatch = hatches[i % len(hatches)]
+        legend_patch.set_hatch(f"{hatch}{hatch}")
+    # add hatches to bars
+    hatches_used = 0
+    for i, bar in enumerate(bar.patches):
+        i = int(i / 2)
+        hatch_id = i % len(df['Group'].unique())
+        hatch_id %= len(hatches)
+        hatch = hatches[hatch_id]
+        bar.set_hatch(hatch)
+        hatches_used += 1
+
 
     plt.xlabel('Packet Loss (%)')
     plt.ylabel('Throughput (kpps)')
+    # plt.subplots_adjust(top=1)
     for container in ax.containers:
-        ax.bar_label(container, fmt='%.0f')
+        ax.bar_label(container, fmt='%.0f', rotation=90, padding=3)
     # legend = plt.legend()
     # legend.get_frame().set_facecolor('white')
     # legend.get_frame().set_alpha(0.8)

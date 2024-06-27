@@ -165,14 +165,14 @@ def main():
     # Define some hatches
     hatches = ['-', '+', 'x', '\\', '*', 'o', '.O', '//']
 
-    # iterate through each container, hatch, and legend handle
-    for container, hatch, handle in zip(ax.containers, hatches, ax.get_legend().legend_handles[::-1]):
-        # update the hatching in the legend handle
-        handle.set_hatch(hatch)
-        # iterate through each rectangle in the container
-        for rectangle in container:
-            # set the rectangle hatch
-            rectangle.set_hatch(hatch)
+    # # iterate through each container, hatch, and legend handle
+    # for container, hatch, handle in zip(ax.containers, hatches, ax.get_legend().legend_handles[::-1]):
+    #     # update the hatching in the legend handle
+    #     handle.set_hatch(hatch)
+    #     # iterate through each rectangle in the container
+    #     for rectangle in container:
+    #         # set the rectangle hatch
+    #         rectangle.set_hatch(hatch)
 
     # # Loop over the bars
     # for i,thisbar in enumerate(bar.patches):

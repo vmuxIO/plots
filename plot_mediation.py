@@ -108,7 +108,8 @@ def main():
         plt.title(args.title)
     plt.grid()
     # plt.xlim(0, 0.83)
-    ax.set_yscale('log' if args.logarithmic else 'linear')
+    log_scale = (False, True) if args.logarithmic else False
+    # ax.set_yscale('log' if args.logarithmic else 'linear')
 
     dfs = []
     for color in COLORS:
@@ -124,12 +125,13 @@ def main():
     hue = ['repetitions', 'num_vms', 'interface', 'fastclick']
     groups = df.groupby(hue)
     summary = df.groupby(hue)['rxMppsCalc'].describe()
-    df_hue = df.apply(lambda row: '_'.join(str(row[col]) for col in ['repetitions', 'interface', 'fastclick']), axis=1)
+    df_hue = df.apply(lambda row: '_'.join(str(row[col]) for col in ['repetitions', 'interface', 'fastclick', 'rate']), axis=1)
     df_hue = map_hue(df_hue, hue_map)
 
     # Plot using Seaborn
     sns.catplot(x='num_vms', y='rxMppsCalc', hue=df_hue, data=pd.concat(dfs), palette='colorblind', kind='point',
                 capsize=.05,  # errorbar='sd'
+                log_scale=log_scale,
                 )
     # sns.move_legend(
     #     ax, "lower center",
@@ -139,7 +141,8 @@ def main():
     plt.xlabel(XLABEL)
     plt.ylabel(YLABEL)
     # plt.ylim(0, 1)
-    plt.ylim(bottom=0)
+    if not args.logarithmic:
+        plt.ylim(bottom=0)
     # for container in ax.containers:
     #     ax.bar_label(container, fmt='%.0f')
 

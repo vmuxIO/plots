@@ -1,3 +1,11 @@
+
+##############################
+#
+# WARNING: This script was replaced by Makefile
+#
+##############################
+
+
 set -x
 set -e
 

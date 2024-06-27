@@ -45,15 +45,36 @@ iperf.pdf: $(DATA_FILES) ../plot_iperf.py
 
 
 mediation.pdf: $(DATA_FILES) ../plot_mediation.py
-	python3 ../plot_mediation.py -W 3.3 -H 2 \
+	python3 ../plot_mediation.py -W 3.3 -H 2 -l \
   	-o mediation.pdf \
-  	--blue-name foo --blue $(DATA_DIR)/mediation_hardware_*vms_vmux-med_rep?.log \
-  	--red-name bar --red $(DATA_DIR)/mediation_software_*vms_vmux-med_rep?.log \
-  	--green-name bar --green $(DATA_DIR)/mediation_software_*vms_vmux-pt_rep?.log \
-  	--orange-name bar --orange $(DATA_DIR)/mediation_hardware_*vms_vmux-pt_rep?.log \
-  	--cyan-name bar --cyan $(DATA_DIR)/mediation_software_*vms_vfio_rep?.log \
-  	--purple-name bar --purple $(DATA_DIR)/mediation_hardware_*vms_vfio_rep?.log \
+  	--yellow-name foo --yellow $(DATA_DIR)/mediation_hardware_*vms_vmux-med_40000kpps_rep?.log \
+  	--orange-name bar --orange $(DATA_DIR)/mediation_software_*vms_vmux-med_40000kpps_rep?.log \
+  	--yellow-name foo --yellow $(DATA_DIR)/mediation_hardware_*vms_vmux-dpdk-e810_40000kpps_rep?.log \
+  	--green-name bar --green $(DATA_DIR)/mediation_software_*vms_vmux-dpdk-e810_40000kpps_rep?.log \
+  	--brown-name bar --brown $(DATA_DIR)/mediation_hardware_*vms_vmux-pt_40000kpps_rep?.log \
+  	--wheat-name bar --wheat $(DATA_DIR)/mediation_software_*vms_vmux-pt_40000kpps_rep?.log \
 
+mediation-slow.pdf: $(DATA_FILES) ../plot_mediation.py
+	python3 ../plot_mediation.py -W 3.3 -H 2 \
+  	-o mediation-slow.pdf \
+  	--yellow-name foo --yellow $(DATA_DIR)/mediation_hardware_*vms_vmux-med_40000kpps_rep?.log \
+  	--blue-name foo --blue $(DATA_DIR)/mediation_hardware_*vms_vmux-med_1000kpps_rep?.log \
+  	--red-name bar --red $(DATA_DIR)/mediation_software_*vms_vmux-med_1000kpps_rep?.log \
+
+mediation-fast.pdf: $(DATA_FILES) ../plot_mediation.py
+	python3 ../plot_mediation.py -W 3.3 -H 2 \
+  	-o mediation-fast.pdf \
+  	--yellow-name foo --yellow $(DATA_DIR)/mediation_hardware_*vms_vmux-med_40000kpps_rep?.log \
+  	--blue-name foo --blue $(DATA_DIR)/mediation_hardware_*vms_vmux-med_1000kpps_rep?.log \
+  	--red-name bar --red $(DATA_DIR)/mediation_software_*vms_vmux-med_1000kpps_rep?.log \
+  	--green-name bar --green $(DATA_DIR)/mediation_software_*vms_vmux-pt_1000kpps_rep?.log \
+  	--orange-name bar --orange $(DATA_DIR)/mediation_hardware_*vms_vmux-pt_1000kpps_rep?.log \
+  	--cyan-name bar --cyan $(DATA_DIR)/mediation_software_*vms_vfio_1000kpps_rep?.log \
+  	--purple-name bar --purple $(DATA_DIR)/mediation_hardware_*vms_vfio_1000kpps_rep?.log \
+  	--gray-name bar --gray $(DATA_DIR)/mediation_hardware_*vms_vfio_40000kpps_rep?.log \
+  	--violet-name bar --violet $(DATA_DIR)/mediation_software_*vms_vfio_40000kpps_rep?.log \
+  	--brown-name bar --brown $(DATA_DIR)/mediation_hardware_*vms_vmux-pt_40000kpps_rep?.log \
+  	--wheat-name bar --wheat $(DATA_DIR)/mediation_software_*vms_vmux-pt_40000kpps_rep?.log \
 
 microbenchmark-cdf.pdf: $(DATA_FILES) ../plot_cdf.py
 	python3 ../plot_cdf.py -W 3.3 -H 2 -l \
@@ -108,3 +129,4 @@ help:
 	@echo "  - *.pdf"
 	@echo "  - help"
 	@echo "  - install"
+	@echo "Note: you may use `make -B` to force rebuilding."

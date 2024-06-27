@@ -7,17 +7,29 @@ from re import search
 from os.path import basename, getsize
 
 
-COLORS = mcolors.CSS4_COLORS.keys()
+COLORS = [ str(i) for i in range(20) ]
+COLOR_MAP = {
+        1: 'blue',
+        2: 'red',
+        3: 'green',
+        4: 'cyan',
+        5: 'violet',
+        6: 'magenta',
+        7: 'orange',
+        8: 'brown',
+        9: 'yellow',
+        }
+# COLORS = mcolors.CSS4_COLORS.keys()
 LINES = {
-    'blue': '-',
-    'green': ':',
-    'red': '-.',
-    'cyan': ':',
-    'yellow': '-',
-    'magenta': ':',
-    'orange': '--',
-    'brown': '--',
-    'violet': '--',
+    '1': '-',
+    '2': '-.',
+    '3': ':',
+    '4': ':',
+    '5': ':',
+    '6': '--',
+    '7': '--',
+    '8': '-',
+    '9': '--',
     }
 # COLORS = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 
@@ -125,7 +137,7 @@ class LoadLatencyPlot(object):
             bin_edges[1:],
             cdf,
             label=f'{self._name}',
-            color=self._color,
+            color=COLOR_MAP[int(self._color)],
             linestyle=LINES[self._color],
             linewidth=1,
             marker='',
@@ -213,13 +225,13 @@ def main():
 
     plots = []
 
-    print(vars(args))
+    # print(vars(args))
     for color in COLORS:
         if args.__dict__[color]:
             plot = LoadLatencyPlot(
                 histogram_filepaths=[h.name for h in args.__dict__[color]],
                 name=args.__dict__[f'{color}_name'],
-                color=color
+                color=color,
             )
             plot.plot()
             plots.append(plot)
@@ -251,7 +263,7 @@ def main():
             loc="lower right",
         )
     else:
-        legend = plt.legend(loc="lower right")
+        legend = plt.legend(loc="upper center", )
 
     legend.get_frame().set_facecolor('white')
     legend.get_frame().set_alpha(0.8)

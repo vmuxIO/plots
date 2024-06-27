@@ -89,14 +89,14 @@ mediation-fast.pdf: $(DATA_FILES) ../plot_mediation.py
 microbenchmark-cdf.pdf: $(DATA_FILES) ../plot_cdf.py
 	python3 ../plot_cdf.py -W 3.3 -H 2 -l \
   	-o microbenchmark-cdf.pdf \
-  	--blue-name "vMux-pt" --blue $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
-  	--red-name "Qemu-pt" --red $(DATA_DIR)/autotest/acc_histogram_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
-  	--green-name "Qemu-vhost" --green ../dat/gr/virtio/acc_histogram_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--cyan-name "Qemu-virtio" --cyan $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--yellow-name "vMux-emu-e1000" --yellow $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--brown-name "vMux-emu-e810" --brown $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--violet-name "vMux-med-e810" --violet $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--orange-name "Qemu-e1000" --orange $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge-e1000_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--1-name "vMux-pt" --1 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
+  	--2-name "Qemu-pt" --2 $(DATA_DIR)/autotest/acc_histogram_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
+  	--3-name "Qemu-vhost" --3 ../dat/gr/virtio/acc_histogram_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--4-name "Qemu-virtio" --4 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--5-name "Qemu-emu-e1000" --5 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge-e1000_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--6-name "vMux-emu-e1000" --6 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--7-name "vMux-emu-e810" --7 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--8-name "vMux-med-e810" --8 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
 
 #  	--m-name "vMux-emu-e810 10kpps" --m $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv
 #  	--m-name "vMux-spacing" --m ../dat/vmux-spacing/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_1000kpps_60B_*s.csv

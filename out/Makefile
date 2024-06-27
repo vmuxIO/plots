@@ -23,20 +23,24 @@ ycsb.pdf: $(DATA_FILES) ../plot_ycsb.py
 		--6-name "Qemu-vhost" --6 $(DATA_DIR)/ycsb_*vms_bridge-vhost_-1rps_rep*.csv \
 		--7-name "vMux-med-e810" --7 $(DATA_DIR)/ycsb_*vms_vmux-med_-1rps_rep*.csv \
 
+# vMux emu doesnt work and hence does not appear in the plot
 microservices.pdf: $(DATA_FILES) ../plot_microservices.py
-	python3 ../plot_microservices.py -W 3.3 -H 2 \
-  	--1-name "media qemu-virtio" --1 $(DATA_DIR)/mediaMicroservices_bridge_33vms_*rps_rep?.log \
-  	--2-name "media qemu-e1000" --2 $(DATA_DIR)/mediaMicroservices_bridge-e1000_33vms_*rps_rep?.log \
-  	--3-name "media vmux-e1000" --3 $(DATA_DIR)/mediaMicroservices_vmux-emu_33vms_*rps_rep?.log \
-  	--4-name "media vmux-med-e810" --4 $(DATA_DIR)/mediaMicroservices_vmux-med_33vms_*rps_rep?.log \
-  	--5-name "hotel qemu-virtio" --5 $(DATA_DIR)/hotelReservation_bridge_19vms_*rps_rep?.log \
-  	--6-name "hotel qemu-e1000" --6 $(DATA_DIR)/hotelReservation_bridge-e1000_19vms_*rps_rep?.log \
-  	--7-name "hotel vmux-e1000" --7 $(DATA_DIR)/hotelReservation_vmux-emu_19vms_*rps_rep?.log \
-  	--8-name "hotel vmux-med-e810" --8 $(DATA_DIR)/hotelReservation_vmux-med_19vms_*rps_rep?.log \
-  	--9-name "social qemu-virtio" --9 $(DATA_DIR)/socialNetwork_bridge_27vms_*rps_rep?.log \
-  	--10-name "social qemu-e1000" --10 $(DATA_DIR)/socialNetwork_bridge-e1000_27vms_*rps_rep?.log \
-  	--11-name "social vmux-e1000" --11 $(DATA_DIR)/socialNetwork_vmux-emu_27vms_*rps_rep?.log \
-  	--12-name "social vmux-med-e810" --12 $(DATA_DIR)/socialNetwork_vmux-med_27vms_*rps_rep?.log \
+	python3 ../plot_microservices.py -W 3.3 -H 4.5 \
+  	--1-name "media Qemu-virtio" --1 $(DATA_DIR)/mediaMicroservices_bridge_33vms_*rps_rep?.log \
+  	--2-name "media Qemu-e1000" --2 $(DATA_DIR)/mediaMicroservices_bridge-e1000_33vms_*rps_rep?.log \
+  	--3-name "media vMux-emu-e1000" --3 $(DATA_DIR)/mediaMicroservices_vmux-emu_33vms_*rps_rep?.log \
+  	--4-name "media vMux-emu-e810" --4 $(DATA_DIR)/mediaMicroservices_vmux-dpdk-e810_33vms_*rps_rep?.log \
+  	--5-name "media vMux-med-e810" --5 $(DATA_DIR)/mediaMicroservices_vmux-med_33vms_*rps_rep?.log \
+  	--6-name "hotel Qemu-VirtIO" --6 $(DATA_DIR)/hotelReservation_bridge_19vms_*rps_rep?.log \
+  	--7-name "hotel Qemu-e1000" --7 $(DATA_DIR)/hotelReservation_bridge-e1000_19vms_*rps_rep?.log \
+  	--8-name "hotel vMux-emu-e1000" --8 $(DATA_DIR)/hotelReservation_vmux-emu_19vms_*rps_rep?.log \
+  	--9-name "hotel vMux-emu-e810" --9 $(DATA_DIR)/hotelReservation_vmux-dpdk-e810_19vms_*rps_rep?.log \
+  	--10-name "hotel vMux-med-e810" --10 $(DATA_DIR)/hotelReservation_vmux-med_19vms_*rps_rep?.log \
+  	--11-name "social Qemu-VirtIO" --11 $(DATA_DIR)/socialNetwork_bridge_27vms_*rps_rep?.log \
+  	--12-name "social Qemu-e1000" --12 $(DATA_DIR)/socialNetwork_bridge-e1000_27vms_*rps_rep?.log \
+  	--13-name "social vMux-emu-e1000" --13 $(DATA_DIR)/socialNetwork_vmux-emu_27vms_*rps_rep?.log \
+  	--14-name "social vMux-emu-e810" --14 $(DATA_DIR)/socialNetwork_vmux-dpdk-e810_27vms_*rps_rep?.log \
+  	--15-name "social vMux-med-e810" --15 $(DATA_DIR)/socialNetwork_vmux-med_27vms_*rps_rep?.log \
 
 iperf.pdf: $(DATA_FILES) ../plot_iperf.py
 	python3 ../plot_iperf.py -W 3.3 -H 2 \

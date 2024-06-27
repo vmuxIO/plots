@@ -200,17 +200,41 @@ def main():
     # df_hue = df.apply(lambda row: '_'.join(str(row.color), str(row.name)), axis=1)
     # df_hue = map_hue(df_hue, hue_map)
 
+    markers = []
+    for hue in df['name'].unique():
+        if "media" in hue:
+            markers += [ (3, 2) ]
+        elif "hotel" in hue:
+            markers += [ 'x' ]
+        elif "social" in hue:
+            markers += [ (5, 2) ]
+        else:
+            markers += [ 'o' ]
+
+    linestyles = []
+    for hue in df['name'].unique():
+        if "vMux" in hue:
+            linestyles += [ '-' ]
+        else:
+            linestyles += [ ':' ]
+    # linestyles = [ '-', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--']
+
     # Plot using Seaborn
-    sns.catplot(x='offered_load_rps', y='latency_mean', hue=df['name'], data=df,
+    sns.pointplot(x='offered_load_rps', y='latency_mean', hue=df['name'], data=df,
                 palette='colorblind',
-                kind='point',
-                capsize=.05,  # errorbar='sd'
+                # kind='point',
+                # capsize=.05,  # errorbar='sd'
+                markers=markers,
+                linestyles=linestyles,
                 )
-    # sns.move_legend(
-    #     ax, "lower center",
-    #     bbox_to_anchor=(.5, 1), ncol=3, title=None, frameon=False,
-    # )
-    #
+
+    sns.move_legend(
+        ax, "lower center",
+        bbox_to_anchor=(0.45, 1),
+        ncol=1,
+        title=None,
+        # frameon=False,
+    )
     plt.xlabel(XLABEL)
     plt.ylabel(YLABEL)
     plt.ylim(0, 10)

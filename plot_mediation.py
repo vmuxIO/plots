@@ -7,7 +7,7 @@ import seaborn as sns
 import pandas as pd
 from re import search, findall, MULTILINE
 from os.path import basename, getsize
-from typing import List
+from typing import List, Any
 
 
 COLORS = [ str(i) for i in range(20) ]
@@ -110,7 +110,7 @@ def main():
     plt.grid()
     # plt.xlim(0, 0.83)
     log_scale = (False, True) if args.logarithmic else False
-    # ax.set_yscale('log' if args.logarithmic else 'linear')
+    ax.set_yscale('log' if args.logarithmic else 'linear')
 
     dfs = []
     for color in COLORS:
@@ -134,15 +134,25 @@ def main():
     df_hue = map_hue(df_hue, hue_map)
 
     # Plot using Seaborn
-    sns.catplot(x='num_vms', y='rxMppsCalc', hue="hue", data=pd.concat(dfs), palette='colorblind', kind='point',
-                capsize=.05,  # errorbar='sd'
-                log_scale=log_scale,
+    bar = sns.barplot(x='num_vms', y='rxMppsCalc', hue="hue", data=pd.concat(dfs),
+                palette='colorblind',
+                edgecolor='dimgray',
+                # kind='bar',
+                # capsize=.05,  # errorbar='sd'
+                # log_scale=log_scale,
                 )
     # sns.move_legend(
     #     ax, "lower center",
     #     bbox_to_anchor=(.5, 1), ncol=3, title=None, frameon=False,
     # )
     #
+    sns.move_legend(
+        ax, "lower center",
+        bbox_to_anchor=(0.45, 1),
+        ncol=1,
+        title=None,
+        # frameon=False,
+    )
     plt.xlabel(XLABEL)
     plt.ylabel(YLABEL)
     # plt.ylim(0, 1)
@@ -154,7 +164,10 @@ def main():
     # legend = plt.legend()
     # legend.get_frame().set_facecolor('white')
     # legend.get_frame().set_alpha(0.8)
+    # fig.tight_layout(rect = (0, 0, 0, 0.1))
+    ax.set_position((0.1, 0.1, 0.5, 0.8))
     fig.tight_layout()
+    # fig.tight_layout(rect=(0, 0, 0.3, 1))
     plt.savefig(args.output.name)
     plt.close()
 

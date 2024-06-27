@@ -12,7 +12,8 @@ from typing import List
 from dataclasses import dataclass, field, asdict
 
 
-COLORS = mcolors.CSS4_COLORS.keys()
+COLORS = [ str(i) for i in range(20) ]
+# COLORS = mcolors.CSS4_COLORS.keys()
 # COLORS = [
 #     'blue',
 #     'cyan',
@@ -166,13 +167,12 @@ def main():
     dfs = []
     for color in COLORS:
         if args.__dict__[color]:
-            dfs += [ pd.read_csv(f.name) for f in args.__dict__[color] ]
-            # throughput = ThroughputDatapoint(
-            #     moongen_log_filepaths=[f.name for f in args.__dict__[color]],
-            #     name=args.__dict__[f'{color}_name'],
-            #     color=color,
-            # )
-            # dfs += color_dfs
+            arg_dfs = [ pd.read_csv(f.name) for f in args.__dict__[color] ]
+            arg_df = pd.concat(arg_dfs)
+            name = args.__dict__[f'{color}_name']
+            arg_df["hue"] = name
+            dfs += [ arg_df ]
+
     df = pd.concat(dfs, ignore_index=True)
     del df['Unnamed: 0']
     df = df[df.op == 'overall'] # only the overall stat has ops_per_sec
@@ -185,16 +185,32 @@ def main():
     # df['aggregate_ops_per_sec'] = df.apply(lambda row: print(row), axis=1)
     # cast_column(df, 'num_vms', lambda i: int(i))
     cast_column(df, 'num_vms', int)
+    markers = []
+    for hue in df['hue'].unique():
+        if hue == 'Qemu-pt':
+            markers += [ 'o' ]
+        else:
+            markers += [ 'x' ]
+    # markers = { 'vMux-emu-e810': 'x' }
+    # markers = [ 'x', '.', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x' ]
+    # linestyles = [ '-', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--']
 
     # Plot using Seaborn
-    sns.catplot(x='num_vms', y='ops_per_sec', hue=df_hue, data=df, palette='colorblind', kind='point',
+    sns.pointplot(x='num_vms', y='ops_per_sec', hue="hue", data=df, palette='colorblind',
+                # kind='point',
                 capsize=.05,  # errorbar='sd'
+                markers=markers,
+                # linestyles=['-', '--'],
+                # linestyles=linestyles,
                 )
-    # sns.move_legend(
-    #     ax, "lower center",
-    #     bbox_to_anchor=(.5, 1), ncol=3, title=None, frameon=False,
-    # )
-    #
+
+    sns.move_legend(
+        ax, "lower center",
+        bbox_to_anchor=(0.45, 1),
+        ncol=1,
+        title=None,
+        # frameon=False,
+    )
     plt.xlabel(XLABEL)
     plt.ylabel(YLABEL)
     plt.ylim(bottom=0)

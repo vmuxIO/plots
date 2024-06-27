@@ -11,7 +11,8 @@ from typing import List
 from dataclasses import dataclass
 
 
-COLORS = mcolors.CSS4_COLORS.keys()
+COLORS = [ str(i) for i in range(20) ]
+# COLORS = mcolors.CSS4_COLORS.keys()
 # COLORS = [
 #     'blue',
 #     'cyan',
@@ -114,7 +115,6 @@ class MicroserviceTest:
 
         for filename in log_filepaths:
             with open(filename, 'r') as f:
-                print(filename)
                 lines = f.readlines()
 
                 # extract offered_load_rps
@@ -201,7 +201,9 @@ def main():
     # df_hue = map_hue(df_hue, hue_map)
 
     # Plot using Seaborn
-    sns.catplot(x='offered_load_rps', y='latency_mean', hue=df['name'], data=df, palette='colorblind', kind='point',
+    sns.catplot(x='offered_load_rps', y='latency_mean', hue=df['name'], data=df,
+                palette='colorblind',
+                kind='point',
                 capsize=.05,  # errorbar='sd'
                 )
     # sns.move_legend(

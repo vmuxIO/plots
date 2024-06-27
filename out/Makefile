@@ -47,14 +47,14 @@ iperf.pdf: $(DATA_FILES) ../plot_iperf.py
 mediation.pdf: $(DATA_FILES) ../plot_mediation.py
 	python3 ../plot_mediation.py -W 3.3 -H 2 -l \
   	-o mediation.pdf \
-  	--blue-name "vMux-med-e810 (w/ rte_flow)" --blue $(DATA_DIR)/mediation_hardware_*vms_vmux-med_40000kpps_rep?.log \
-  	--orange-name "vMux-med-e810" --orange $(DATA_DIR)/mediation_software_*vms_vmux-med_40000kpps_rep?.log \
-  	--yellow-name "vMux-emu-e810 (w/ rte_flow)" --yellow $(DATA_DIR)/mediation_hardware_*vms_vmux-dpdk-e810_40000kpps_rep?.log \
-  	--green-name "vMux-emu-e810" --green $(DATA_DIR)/mediation_software_*vms_vmux-dpdk-e810_40000kpps_rep?.log \
-  	--brown-name "vMux-pt (w/ rte_flow)" --brown $(DATA_DIR)/mediation_hardware_*vms_vmux-pt_40000kpps_rep?.log \
-  	--wheat-name "vMux-pt" --wheat $(DATA_DIR)/mediation_software_*vms_vmux-pt_40000kpps_rep?.log \
-  	--gray-name "Qemu-pt (w/ rte_flow)" --gray $(DATA_DIR)/mediation_hardware_*vms_vfio_40000kpps_rep?.log \
-  	--red-name "Qemu-pt" --red $(DATA_DIR)/mediation_software_*vms_vfio_40000kpps_rep?.log \
+  	--1-name "vMux-med-e810 (w/ rte_flow)" --1 $(DATA_DIR)/mediation_hardware_*vms_vmux-med_40000kpps_rep?.log \
+  	--2-name "vMux-med-e810" --2 $(DATA_DIR)/mediation_software_*vms_vmux-med_40000kpps_rep?.log \
+  	--3-name "vMux-emu-e810 (w/ rte_flow)" --3 $(DATA_DIR)/mediation_hardware_*vms_vmux-dpdk-e810_40000kpps_rep?.log \
+  	--4-name "vMux-emu-e810" --4 $(DATA_DIR)/mediation_software_*vms_vmux-dpdk-e810_40000kpps_rep?.log \
+  	--5-name "vMux-pt (w/ rte_flow)" --5 $(DATA_DIR)/mediation_hardware_*vms_vmux-pt_40000kpps_rep?.log \
+  	--6-name "vMux-pt" --6 $(DATA_DIR)/mediation_software_*vms_vmux-pt_40000kpps_rep?.log \
+  	--7-name "Qemu-pt (w/ rte_flow)" --7 $(DATA_DIR)/mediation_hardware_*vms_vfio_40000kpps_rep?.log \
+  	--8-name "Qemu-pt" --8 $(DATA_DIR)/mediation_software_*vms_vfio_40000kpps_rep?.log \
 
 mediation-slow.pdf: $(DATA_FILES) ../plot_mediation.py
 	python3 ../plot_mediation.py -W 3.3 -H 2 \

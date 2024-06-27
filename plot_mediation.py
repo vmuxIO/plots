@@ -10,8 +10,8 @@ from os.path import basename, getsize
 from typing import List
 
 
-# COLORS = list(range(20))
-COLORS = mcolors.CSS4_COLORS.keys()
+COLORS = [ str(i) for i in range(20) ]
+# COLORS = mcolors.CSS4_COLORS.keys()
 # COLORS = [
 #     'blue',
 #     'cyan',

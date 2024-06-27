@@ -10,6 +10,7 @@ from os.path import basename, getsize
 from typing import List
 
 
+# COLORS = list(range(20))
 COLORS = mcolors.CSS4_COLORS.keys()
 # COLORS = [
 #     'blue',
@@ -114,7 +115,11 @@ def main():
     dfs = []
     for color in COLORS:
         if args.__dict__[color]:
-            dfs += [ pd.read_csv(f.name, sep='\\s+') for f in args.__dict__[color] ]
+            arg_dfs = [ pd.read_csv(f.name, sep='\\s+') for f in args.__dict__[color] ]
+            arg_df = pd.concat(arg_dfs)
+            name = args.__dict__[f'{color}_name']
+            arg_df["hue"] = name
+            dfs += [ arg_df ]
             # throughput = ThroughputDatapoint(
             #     moongen_log_filepaths=[f.name for f in args.__dict__[color]],
             #     name=args.__dict__[f'{color}_name'],
@@ -129,7 +134,7 @@ def main():
     df_hue = map_hue(df_hue, hue_map)
 
     # Plot using Seaborn
-    sns.catplot(x='num_vms', y='rxMppsCalc', hue=df_hue, data=pd.concat(dfs), palette='colorblind', kind='point',
+    sns.catplot(x='num_vms', y='rxMppsCalc', hue="hue", data=pd.concat(dfs), palette='colorblind', kind='point',
                 capsize=.05,  # errorbar='sd'
                 log_scale=log_scale,
                 )

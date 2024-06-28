@@ -228,6 +228,16 @@ def main():
                 linestyles=linestyles,
                 )
 
+    ax.annotate(
+        "↓ Lower is better", # or ↓ ← ↑ →
+        xycoords="axes points",
+        # xy=(0, 0),
+        xy=(0, 0),
+        xytext=(-30, -40),
+        # fontsize=FONT_SIZE,
+        color="navy",
+        weight="bold",
+    )
     sns.move_legend(
         ax, "lower center",
         bbox_to_anchor=(0.45, 1),

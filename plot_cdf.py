@@ -99,13 +99,15 @@ class LoadLatencyPlot(object):
     _latency_histograms = None
     _name = None
     _color = None
+    _line = None
+    _line_color = None
 
     _plot25 = None
     _plot50 = None
     _plot75 = None
     _plot99 = None
 
-    def __init__(self, histogram_filepaths, name, color):
+    def __init__(self, histogram_filepaths, name, color, line, line_color):
         self._latency_histograms = []
         for filepath in histogram_filepaths:
             if getsize(filepath) > 0:
@@ -114,6 +116,8 @@ class LoadLatencyPlot(object):
             print(f"WARN: list of latency histograms empty for {histogram_filepaths}")
         self._name = name
         self._color = color
+        self._line = line
+        self._line_color = line_color
 
     def plot(self):
         hist, bin_edges = np.histogram(self._latency_histograms[0]._latencies, bins=400, density=True)
@@ -137,8 +141,8 @@ class LoadLatencyPlot(object):
             bin_edges[1:],
             cdf,
             label=f'{self._name}',
-            color=COLOR_MAP[int(self._color)],
-            linestyle=LINES[self._color],
+            color=self._line_color,
+            linestyle=self._line,
             linewidth=1,
             marker='',
         )
@@ -190,8 +194,21 @@ def setup_parser():
         parser.add_argument(f'--{color}-name',
                             type=str,
                             default=color,
+                            nargs='+',
                             help=f'''Name of {color} plot''',
                             )
+    # for color in COLORS:
+    #     parser.add_argument(f'--{color}-line',
+    #                         type=str,
+    #                         default="-",
+    #                         help=f'''Line style of {color} plot''',
+    #                         )
+    # for color in COLORS:
+    #     parser.add_argument(f'--{color}-color',
+    #                         type=str,
+    #                         default="blue",
+    #                         help=f'''Color of {color} plot''',
+    #                         )
 
     return parser
 
@@ -219,7 +236,7 @@ def main():
     ax.set_axisbelow(True)
     if args.title:
         plt.title(args.title)
-    plt.xlabel('Latency ($\mu s$)')
+    plt.xlabel('    Latency ($\mu s$)')
     plt.ylabel('CDF (%)')
     plt.grid()
 
@@ -228,10 +245,20 @@ def main():
     # print(vars(args))
     for color in COLORS:
         if args.__dict__[color]:
+            if len(args.__dict__[f'{color}_name']) == 1:
+                name = args.__dict__[f'{color}_name'][0]
+                line = "-"
+                line_color = "blue"
+            elif len(args.__dict__[f'{color}_name']) == 3:
+                name = args.__dict__[f'{color}_name'][0]
+                line = args.__dict__[f'{color}_name'][1].strip("l") # allow prepending with l to avoid "-" being interpreted as a flag
+                line_color = args.__dict__[f'{color}_name'][2]
             plot = LoadLatencyPlot(
                 histogram_filepaths=[h.name for h in args.__dict__[color]],
-                name=args.__dict__[f'{color}_name'],
+                name=name,
                 color=color,
+                line=line,
+                line_color=line_color,
             )
             plot.plot()
             plots.append(plot)
@@ -263,7 +290,18 @@ def main():
             loc="lower right",
         )
     else:
-        legend = plt.legend(loc="upper center", )
+        legend = plt.legend(loc="lower right", bbox_to_anchor=(1, 1), ncol=2)
+
+    ax.annotate(
+        "← Lower is better", # or ↓ ← ↑ →
+        xycoords="axes points",
+        # xy=(0, 0),
+        xy=(0, 0),
+        xytext=(-45, -27),
+        # fontsize=FONT_SIZE,
+        color="navy",
+        weight="bold",
+    )
 
     legend.get_frame().set_facecolor('white')
     legend.get_frame().set_alpha(0.8)

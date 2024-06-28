@@ -185,6 +185,18 @@ def main():
             bar.set_hatch(hatch)
             hatches_used += 1
 
+    grid.facet_axis(0, 0).annotate(
+        "↑ Higher is better", # or ↓
+        xycoords="axes points",
+        # xy=(0, 0),
+        xy=(0, 0),
+        xytext=(-35, -45),
+        # fontsize=FONT_SIZE,
+        color="navy",
+        weight="bold",
+    )
+
+
     grid.figure.set_size_inches(args.width, args.height)
     grid.set_titles("")
     plt.subplots_adjust(top=0.5, left=0.2, right=0.95)

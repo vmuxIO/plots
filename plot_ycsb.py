@@ -211,6 +211,16 @@ def main():
         title=None,
         # frameon=False,
     )
+    ax.annotate(
+        "↑ Higher is better", # or ↓ ← ↑ →
+        xycoords="axes points",
+        # xy=(0, 0),
+        xy=(0, 0),
+        xytext=(-55, -28),
+        # fontsize=FONT_SIZE,
+        color="navy",
+        weight="bold",
+    )
     plt.xlabel(XLABEL)
     plt.ylabel(YLABEL)
     plt.ylim(bottom=0)

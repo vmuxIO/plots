@@ -355,7 +355,7 @@ def main():
     df = pd.concat(dfs)
 
     # Plot using Seaborn
-    bar = sns.barplot(x='Category', y='Values', hue='Group', data=df, palette='colorblind', edgecolor='dimgray')
+    bar = sns.barplot(x='Category', y='Values', hue='Group', data=df, palette='pastel', edgecolor='dimgray')
     sns.move_legend(
         ax, "lower center",
         bbox_to_anchor=(.5, 1), ncol=3, title=None, frameon=False,
@@ -376,6 +376,19 @@ def main():
         bar.set_hatch(hatch)
         hatches_used += 1
 
+    ax.annotate(
+        "↑ Higher is better", # or ↓
+        xycoords="axes points",
+        # xy=(0, 0),
+        xy=(0, 0),
+        xytext=(-45, -27),
+        # fontsize=FONT_SIZE,
+        color="navy",
+        weight="bold",
+    )
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
 
     plt.xlabel('Packet Loss (%)')
     plt.ylabel('Throughput (kpps)')

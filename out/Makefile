@@ -1,16 +1,19 @@
 DATA_DIR := ../dat/vmux0.0.6/
 DATA_FILES = $(wildcard $(DATA_DIR)/*)
 
-all: mediation.pdf ycsb.pdf microservices.pdf iperf.pdf microbenchmark-cdf.pdf microbenchmark-bars.pdf
+PAPER_FIGURES := microbenchmark-cdf.pdf microbenchmark-bars.pdf mediation.pdf microservices.pdf ycsb.pdf
+
+all: $(PAPER_FIGURES)
 
 install:
 	test -n "$(OVERLEAF)" # OVERLEAF must be set
-	cp ycsb.pdf $(OVERLEAF)/ycsb.pdf
-	cp microservices.pdf $(OVERLEAF)/microservices.pdf
-	cp iperf.pdf $(OVERLEAF)/iperf.pdf
-	cp mediation.pdf $(OVERLEAF)/mediation.pdf
-	cp microbenchmark-cdf.pdf $(OVERLEAF)/microbenchmark-cdf.pdf
-	cp microbenchmark-bars.pdf $(OVERLEAF)/microbenchmark-bars.pdf
+	for f in $(PAPER_FIGURES); do cp $$f $(OVERLEAF)/$$f; done
+	# cp ycsb.pdf $(OVERLEAF)/ycsb.pdf
+	# cp microservices.pdf $(OVERLEAF)/microservices.pdf
+	# cp iperf.pdf $(OVERLEAF)/iperf.pdf
+	# cp mediation.pdf $(OVERLEAF)/mediation.pdf
+	# cp microbenchmark-cdf.pdf $(OVERLEAF)/microbenchmark-cdf.pdf
+	# cp microbenchmark-bars.pdf $(OVERLEAF)/microbenchmark-bars.pdf
 
 ycsb.pdf: $(DATA_FILES) ../plot_ycsb.py
 	python3 ../plot_ycsb.py -o ycsb.pdf \
@@ -25,22 +28,25 @@ ycsb.pdf: $(DATA_FILES) ../plot_ycsb.py
 
 # vMux emu doesnt work and hence does not appear in the plot
 microservices.pdf: $(DATA_FILES) ../plot_microservices.py
-	python3 ../plot_microservices.py -W 3.3 -H 4.5 \
-  	--1-name "media Qemu-virtio" --1 $(DATA_DIR)/mediaMicroservices_bridge_33vms_*rps_rep?.log \
-  	--2-name "media Qemu-e1000" --2 $(DATA_DIR)/mediaMicroservices_bridge-e1000_33vms_*rps_rep?.log \
-  	--3-name "media vMux-emu-e1000" --3 $(DATA_DIR)/mediaMicroservices_vmux-emu_33vms_*rps_rep?.log \
-  	--4-name "media vMux-emu-e810" --4 $(DATA_DIR)/mediaMicroservices_vmux-dpdk-e810_33vms_*rps_rep?.log \
-  	--5-name "media vMux-med-e810" --5 $(DATA_DIR)/mediaMicroservices_vmux-med_33vms_*rps_rep?.log \
-  	--6-name "hotel Qemu-VirtIO" --6 $(DATA_DIR)/hotelReservation_bridge_19vms_*rps_rep?.log \
-  	--7-name "hotel Qemu-e1000" --7 $(DATA_DIR)/hotelReservation_bridge-e1000_19vms_*rps_rep?.log \
-  	--8-name "hotel vMux-emu-e1000" --8 $(DATA_DIR)/hotelReservation_vmux-emu_19vms_*rps_rep?.log \
-  	--9-name "hotel vMux-emu-e810" --9 $(DATA_DIR)/hotelReservation_vmux-dpdk-e810_19vms_*rps_rep?.log \
-  	--10-name "hotel vMux-med-e810" --10 $(DATA_DIR)/hotelReservation_vmux-med_19vms_*rps_rep?.log \
-  	--11-name "social Qemu-VirtIO" --11 $(DATA_DIR)/socialNetwork_bridge_27vms_*rps_rep?.log \
-  	--12-name "social Qemu-e1000" --12 $(DATA_DIR)/socialNetwork_bridge-e1000_27vms_*rps_rep?.log \
-  	--13-name "social vMux-emu-e1000" --13 $(DATA_DIR)/socialNetwork_vmux-emu_27vms_*rps_rep?.log \
-  	--14-name "social vMux-emu-e810" --14 $(DATA_DIR)/socialNetwork_vmux-dpdk-e810_27vms_*rps_rep?.log \
-  	--15-name "social vMux-med-e810" --15 $(DATA_DIR)/socialNetwork_vmux-med_27vms_*rps_rep?.log \
+	python3 ../plot_microservices.py -W 3.3 -H 5 \
+  	--1-name "media Qemu-VirtIO" --1 $(DATA_DIR)/mediaMicroservices_bridge_33vms_*rps_rep?.log \
+  	--2-name "media Qemu-vhost" --2 $(DATA_DIR)/mediaMicroservices_bridge-vhost_33vms_*rps_rep?.log \
+  	--3-name "media Qemu-e1000" --3 $(DATA_DIR)/mediaMicroservices_bridge-e1000_33vms_*rps_rep?.log \
+  	--4-name "media vMux-emu-e1000" --4 $(DATA_DIR)/mediaMicroservices_vmux-emu_33vms_*rps_rep?.log \
+  	--5-name "media vMux-emu-e810" --5 $(DATA_DIR)/mediaMicroservices_vmux-dpdk-e810_33vms_*rps_rep?.log \
+  	--6-name "media vMux-med-e810" --6 $(DATA_DIR)/mediaMicroservices_vmux-med_33vms_*rps_rep?.log \
+  	--7-name "hotel Qemu-VirtIO" --7 $(DATA_DIR)/hotelReservation_bridge_19vms_*rps_rep?.log \
+  	--8-name "hotel Qemu-vhost" --8 $(DATA_DIR)/hotelReservation_bridge-vhost_19vms_*rps_rep?.log \
+  	--9-name "hotel Qemu-e1000" --9 $(DATA_DIR)/hotelReservation_bridge-e1000_19vms_*rps_rep?.log \
+  	--10-name "hotel vMux-emu-e1000" --10 $(DATA_DIR)/hotelReservation_vmux-emu_19vms_*rps_rep?.log \
+  	--11-name "hotel vMux-emu-e810" --11 $(DATA_DIR)/hotelReservation_vmux-dpdk-e810_19vms_*rps_rep?.log \
+  	--12-name "hotel vMux-med-e810" --12 $(DATA_DIR)/hotelReservation_vmux-med_19vms_*rps_rep?.log \
+  	--13-name "social Qemu-VirtIO" --13 $(DATA_DIR)/socialNetwork_bridge_27vms_*rps_rep?.log \
+  	--14-name "social Qemu-vhost" --14 $(DATA_DIR)/socialNetwork_bridge-vhost_27vms_*rps_rep?.log \
+  	--15-name "social Qemu-e1000" --15 $(DATA_DIR)/socialNetwork_bridge-e1000_27vms_*rps_rep?.log \
+  	--16-name "social vMux-emu-e1000" --16 $(DATA_DIR)/socialNetwork_vmux-emu_27vms_*rps_rep?.log \
+  	--17-name "social vMux-emu-e810" --17 $(DATA_DIR)/socialNetwork_vmux-dpdk-e810_27vms_*rps_rep?.log \
+  	--18-name "social vMux-med-e810" --18 $(DATA_DIR)/socialNetwork_vmux-med_27vms_*rps_rep?.log \
 
 iperf.pdf: $(DATA_FILES) ../plot_iperf.py
 	python3 ../plot_iperf.py -W 3.3 -H 2 \
@@ -87,21 +93,31 @@ mediation-fast.pdf: $(DATA_FILES) ../plot_mediation.py
   	# --2-name "vMux-med-e810" --2 $(DATA_DIR)/mediation_hardware_*vms_vmux-med_1000kpps_rep?.log \
 
 microbenchmark-cdf.pdf: $(DATA_FILES) ../plot_cdf.py
-	python3 ../plot_cdf.py -W 3.3 -H 2 -l \
+	python3 ../plot_cdf.py -W 3.3 -H 2.5 -l \
   	-o microbenchmark-cdf.pdf \
-  	--1-name "vMux-pt" --1 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
-  	--2-name "Qemu-pt" --2 $(DATA_DIR)/autotest/acc_histogram_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
-  	--3-name "Qemu-vhost" --3 ../dat/gr/virtio/acc_histogram_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--4-name "Qemu-virtio" --4 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--5-name "Qemu-emu-e1000" --5 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge-e1000_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--6-name "vMux-emu-e1000" --6 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--7-name "vMux-emu-e810" --7 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--8-name "vMux-med-e810" --8 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--1-name "vMux-pt" "l-" "blue" --1 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
+  	--2-name "vMux-emu-e1000" "l--" "magenta" --2 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--3-name "vMux-emu-e810" "l--" "orange" --3 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--4-name "vMux-med-e810" "l-" "brown" --4 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--5-name "Qemu-pt" "l-." "red" --5 $(DATA_DIR)/autotest/acc_histogram_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
+  	--6-name "Qemu-vhost" "l:" "green" --6 ../dat/gr/virtio/acc_histogram_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--7-name "Qemu-virtio" "l:" "cyan" --7 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--8-name "Qemu-emu-e1000" "l:" "violet" --8 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge-e1000_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
 
 #  	--m-name "vMux-emu-e810 10kpps" --m $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv
 #  	--m-name "vMux-spacing" --m ../dat/vmux-spacing/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_1000kpps_60B_*s.csv
 #  	--m-name "vMux-emu x" --m ../dat/vmux0.0.5/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_30kpps_60B_*s.csv \
 #  	--c-name "Qemu-emu 10kpps" --c ../dat/gr/virtio/acc_histogram_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_10kpps_60B_30s.csv \
+
+
+cdf-vmux-mg-vs-xdp.pdf: $(DATA_FILES) ../plot_cdf.py
+	python3 ../plot_cdf.py -W 3.3 -H 2 -l \
+  	-o cdf-vmux-mg-vs-xdp.pdf \
+  	--1-name "vMux-med-e810 xdp" "l--" "brown" --1 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--2-name "vMux-med-e810 moongen" "l:" "brown" --2 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_30s.csv \
+  	--3-name "Qemu-pt xdp" "l--" "orange" --3 $(DATA_DIR)/autotest/acc_histogram_pcvm_vfio_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_30s.csv \
+  	--4-name "Qemu-pt moongen" "l:" "orange" --4 $(DATA_DIR)/autotest/acc_histogram_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_30s.csv \
+
 
 me-cdf.pdf: $(DATA_FILES) ../plot_cdf.py
 	python3 ../plot_cdf.py -W 3.3 -H 2 -l \

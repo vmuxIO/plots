@@ -3,6 +3,8 @@ DATA_FILES = $(wildcard $(DATA_DIR)/*)
 
 PAPER_FIGURES := microbenchmark-cdf.pdf microbenchmark-bars.pdf mediation.pdf microservices.pdf ycsb.pdf
 
+WIDTH := 4
+
 all: $(PAPER_FIGURES)
 
 install:
@@ -17,18 +19,18 @@ install:
 
 ycsb.pdf: $(DATA_FILES) ../plot_ycsb.py
 	python3 ../plot_ycsb.py -o ycsb.pdf \
-		-W 3.3 -H 4.5 \
+		-W $(WIDTH) -H 4.5 \
 		--1-name "Qemu-pt" --1 $(DATA_DIR)/ycsb_*vms_vfio_-1rps_rep*.csv \
-		--2-name "vMux-emu-e810" --2 $(DATA_DIR)/ycsb_*vms_vmux-dpdk-e810_-1rps_rep*.csv \
-		--3-name "vMux-emu-e1000" --3 $(DATA_DIR)/ycsb_*vms_vmux-emu_-1rps_rep*.csv \
-		--4-name "Qemu-e1000" --4 $(DATA_DIR)/ycsb_*vms_bridge-e1000_-1rps_rep*.csv \
-		--5-name "Qemu-VirtIO" --5 $(DATA_DIR)/ycsb_*vms_bridge_-1rps_rep*.csv \
-		--6-name "Qemu-vhost" --6 $(DATA_DIR)/ycsb_*vms_bridge-vhost_-1rps_rep*.csv \
+		--2-name "Qemu-e1000" --2 $(DATA_DIR)/ycsb_*vms_bridge-e1000_-1rps_rep*.csv \
+		--3-name "Qemu-VirtIO" --3 $(DATA_DIR)/ycsb_*vms_bridge_-1rps_rep*.csv \
+		--4-name "Qemu-vhost" --4 $(DATA_DIR)/ycsb_*vms_bridge-vhost_-1rps_rep*.csv \
+		--5-name "vMux-emu-e1000" --5 $(DATA_DIR)/ycsb_*vms_vmux-emu_-1rps_rep*.csv \
+		--6-name "vMux-emu-e810" --6 $(DATA_DIR)/ycsb_*vms_vmux-dpdk-e810_-1rps_rep*.csv \
 		--7-name "vMux-med-e810" --7 $(DATA_DIR)/ycsb_*vms_vmux-med_-1rps_rep*.csv \
 
 # vMux emu doesnt work and hence does not appear in the plot
 microservices.pdf: $(DATA_FILES) ../plot_microservices.py
-	python3 ../plot_microservices.py -W 3.3 -H 5 \
+	python3 ../plot_microservices.py -W $(WIDTH) -H 5 \
   	--1-name "media Qemu-VirtIO" --1 $(DATA_DIR)/mediaMicroservices_bridge_33vms_*rps_rep?.log \
   	--2-name "media Qemu-vhost" --2 $(DATA_DIR)/mediaMicroservices_bridge-vhost_33vms_*rps_rep?.log \
   	--3-name "media Qemu-e1000" --3 $(DATA_DIR)/mediaMicroservices_bridge-e1000_33vms_*rps_rep?.log \
@@ -49,7 +51,7 @@ microservices.pdf: $(DATA_FILES) ../plot_microservices.py
   	--18-name "social vMux-med-e810" --18 $(DATA_DIR)/socialNetwork_vmux-med_27vms_*rps_rep?.log \
 
 iperf.pdf: $(DATA_FILES) ../plot_iperf.py
-	python3 ../plot_iperf.py -W 3.3 -H 2 \
+	python3 ../plot_iperf.py -W $(WIDTH) -H 2 \
   	-o iperf.pdf \
   	--blue-name foo --blue $(DATA_DIR)/iperf3_1vms_vfio_*_rep?.summary \
   	--red-name foo --red $(DATA_DIR)/iperf3_1vms_bridge-vhost_*_rep?.summary \
@@ -62,7 +64,7 @@ iperf.pdf: $(DATA_FILES) ../plot_iperf.py
 
 
 mediation.pdf: $(DATA_FILES) ../plot_mediation.py
-	python3 ../plot_mediation.py -W 3.3 -H 4 -l \
+	python3 ../plot_mediation.py -W $(WIDTH) -H 4 -l \
   	-o mediation.pdf \
   	--1-name "vMux-med-e810 (w/ rte_flow)" --1 $(DATA_DIR)/mediation_hardware_*vms_vmux-med_40000kpps_rep?.log \
   	--2-name "vMux-med-e810" --2 $(DATA_DIR)/mediation_software_*vms_vmux-med_40000kpps_rep?.log \
@@ -74,7 +76,7 @@ mediation.pdf: $(DATA_FILES) ../plot_mediation.py
   	--8-name "Qemu-pt" --8 $(DATA_DIR)/mediation_software_*vms_vfio_40000kpps_rep?.log \
 
 mediation-slow.pdf: $(DATA_FILES) ../plot_mediation.py
-	python3 ../plot_mediation.py -W 3.3 -H 4 \
+	python3 ../plot_mediation.py -W $(WIDTH) -H 4 \
   	-o mediation-slow.pdf \
   	--1-name "vMux-med-e810 (w/ rte_flow)" --1 $(DATA_DIR)/mediation_hardware_*vms_vmux-med_40000kpps_rep?.log \
   	--2-name "vMux-med-e810" --2 $(DATA_DIR)/mediation_software_*vms_vmux-med_40000kpps_rep?.log \
@@ -82,7 +84,7 @@ mediation-slow.pdf: $(DATA_FILES) ../plot_mediation.py
   	--4-name "vMux-emu-e810" --4 $(DATA_DIR)/mediation_software_*vms_vmux-dpdk-e810_40000kpps_rep?.log \
 
 mediation-fast.pdf: $(DATA_FILES) ../plot_mediation.py
-	python3 ../plot_mediation.py -W 3.3 -H 4 \
+	python3 ../plot_mediation.py -W $(WIDTH) -H 4 \
   	-o mediation-fast.pdf \
   	--1-name "vMux-med-e810 (w/ rte_flow)" --1 $(DATA_DIR)/mediation_hardware_*vms_vmux-med_40000kpps_rep?.log \
   	--3-name "vMux-med-e810" --3 $(DATA_DIR)/mediation_software_*vms_vmux-med_40000kpps_rep?.log \
@@ -93,7 +95,7 @@ mediation-fast.pdf: $(DATA_FILES) ../plot_mediation.py
   	# --2-name "vMux-med-e810" --2 $(DATA_DIR)/mediation_hardware_*vms_vmux-med_1000kpps_rep?.log \
 
 microbenchmark-cdf.pdf: $(DATA_FILES) ../plot_cdf.py
-	python3 ../plot_cdf.py -W 3.3 -H 2.5 -l \
+	python3 ../plot_cdf.py -W $(WIDTH) -H 2.5 -l \
   	-o microbenchmark-cdf.pdf \
   	--1-name "vMux-pt" "l-" "blue" --1 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
   	--2-name "vMux-emu-e1000" "l--" "magenta" --2 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
@@ -111,7 +113,7 @@ microbenchmark-cdf.pdf: $(DATA_FILES) ../plot_cdf.py
 
 
 cdf-vmux-mg-vs-xdp.pdf: $(DATA_FILES) ../plot_cdf.py
-	python3 ../plot_cdf.py -W 3.3 -H 2 -l \
+	python3 ../plot_cdf.py -W $(WIDTH) -H 2 -l \
   	-o cdf-vmux-mg-vs-xdp.pdf \
   	--1-name "vMux-med-e810 xdp" "l--" "brown" --1 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
   	--2-name "vMux-med-e810 moongen" "l:" "brown" --2 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_30s.csv \
@@ -120,7 +122,7 @@ cdf-vmux-mg-vs-xdp.pdf: $(DATA_FILES) ../plot_cdf.py
 
 
 me-cdf.pdf: $(DATA_FILES) ../plot_cdf.py
-	python3 ../plot_cdf.py -W 3.3 -H 2 -l \
+	python3 ../plot_cdf.py -W $(WIDTH) -H 2 -l \
   	-o me-cdf.pdf \
   	--blue-name "Qemu-e1000 x" --blue ../dat/vmux0.0.5/acc_histogram_pcvm_bridge-e1000_normal_vhostoff_ioregionfdoff_xdp_30kpps_60B_*s.csv \
   	--magenta-name "vMux-spacing" --magenta ../dat/vmux-spacing/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_1000kpps_60B_*s.csv \
@@ -131,7 +133,7 @@ me-cdf.pdf: $(DATA_FILES) ../plot_cdf.py
 # --red-name "vfio wtf" --red dat/vfio_vs_vmux2/acc_histogram_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_10000kpps_1020B_30s.csv \
 
 microbenchmark-bars.pdf: $(DATA_FILES) ../plot_throughput_bars.py
-	python3 ../plot_throughput_bars.py -W 5 -H 2.7 -l \
+	python3 ../plot_throughput_bars.py -W $(WIDTH) -H 3 -l \
   	-o microbenchmark-bars.pdf \
   	--1-name "vMux-pt" --1 $(DATA_DIR)/autotest/output_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \
   	--2-name "Qemu-pt" --2 $(DATA_DIR)/autotest/output_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \

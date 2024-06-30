@@ -290,7 +290,9 @@ def main():
             loc="lower right",
         )
     else:
-        legend = plt.legend(loc="lower right", bbox_to_anchor=(1, 1), ncol=2)
+        legend = plt.legend(loc="lower right", bbox_to_anchor=(1, 1),
+                            ncol=2, title=None, frameon=False,
+                            )
 
     ax.annotate(
         "← Lower is better", # or ↓ ← ↑ →

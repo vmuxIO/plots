@@ -243,7 +243,7 @@ def main():
         bbox_to_anchor=(0.45, 1),
         ncol=1,
         title=None,
-        # frameon=False,
+        frameon=False,
     )
     plt.xlabel(XLABEL)
     plt.ylabel(YLABEL)

@@ -358,7 +358,7 @@ def main():
     bar = sns.barplot(x='Category', y='Values', hue='Group', data=df, palette='pastel', edgecolor='dimgray')
     sns.move_legend(
         ax, "lower center",
-        bbox_to_anchor=(.5, 1), ncol=3, title=None, frameon=False,
+        bbox_to_anchor=(.5, 1), ncol=2, title=None, frameon=False,
         borderaxespad=2.5, # put some space between the legend and the plot
     )
 
@@ -398,7 +398,7 @@ def main():
     # legend = plt.legend()
     # legend.get_frame().set_facecolor('white')
     # legend.get_frame().set_alpha(0.8)
-    fig.tight_layout()
+    plt.tight_layout()
     plt.savefig(args.output.name)
     plt.close()
 

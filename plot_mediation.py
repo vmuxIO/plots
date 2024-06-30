@@ -167,7 +167,9 @@ def main():
                        edgecolor="dimgray",
                        )
 
-    grid.add_legend(bbox_to_anchor=(0.5, 0.77), loc='center', ncol=1)
+    grid.add_legend(bbox_to_anchor=(0.5, 0.77), loc='center',
+                    ncol=1, title=None, frameon=False,
+                    )
 
     # Fix the legend hatches
     for i, legend_patch in enumerate(grid._legend.get_patches()):

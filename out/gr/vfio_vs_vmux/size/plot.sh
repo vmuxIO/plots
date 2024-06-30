@@ -11,13 +11,14 @@ for n in 'vfio' 'vmux'; do
     infix="${m}_${n}_${q}_${v}_${i}_${r}"
     
     blacks='60B'
-    blues='124B'
-    greens='252B'
-    yellows='380B'
-    oranges='508B'
+    blues='380B'
+    greens='508B'
+    yellows='600B'
+    oranges='700B'
     reds='764B'
     violets='1020B'
     purples='1514B'
+    # for s in '60B' '124B' '252B' '380B' '508B' '600B' '700B' '764B' '1020B' '1514B'; do
     
     blackname="$m $n $q $v $i $r $blacks"
     bluename="$m $n $q $v $i $r $blues"
@@ -64,21 +65,21 @@ for n in 'vfio' 'vmux'; do
     echo "Plotting ${name}"
     
     ../../../../plot_load_latency.py \
-        --black "../../../../dat/gr/vfio_vs_vmux/acc_histogram_${blackinfix1}_"*"_${blackinfix2}_"* \
+        --black "../../../../dat/vfio_vs_vmux2/acc_histogram_${blackinfix1}_"*"_${blackinfix2}_"* \
         --black-name "${blacks}" \
-        --blue "../../../../dat/gr/vfio_vs_vmux/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"* \
+        --blue "../../../../dat/vfio_vs_vmux2/acc_histogram_${blueinfix1}_"*"_${blueinfix2}_"* \
         --blue-name "${blues}" \
-        --green "../../../../dat/gr/vfio_vs_vmux/acc_histogram_${greeninfix1}_"*"_${greeninfix2}_"* \
+        --green "../../../../dat/vfio_vs_vmux2/acc_histogram_${greeninfix1}_"*"_${greeninfix2}_"* \
         --green-name "${greens}" \
-        --yellow "../../../../dat/gr/vfio_vs_vmux/acc_histogram_${yellowinfix1}_"*"_${yellowinfix2}_"* \
+        --yellow "../../../../dat/vfio_vs_vmux2/acc_histogram_${yellowinfix1}_"*"_${yellowinfix2}_"* \
         --yellow-name "${yellows}" \
-        --orange "../../../../dat/gr/vfio_vs_vmux/acc_histogram_${orangeinfix1}_"*"_${orangeinfix2}_"* \
+        --orange "../../../../dat/vfio_vs_vmux2/acc_histogram_${orangeinfix1}_"*"_${orangeinfix2}_"* \
         --orange-name "${oranges}" \
-        --red "../../../../dat/gr/vfio_vs_vmux/acc_histogram_${redinfix1}_"*"_${redinfix2}_"* \
+        --red "../../../../dat/vfio_vs_vmux2/acc_histogram_${redinfix1}_"*"_${redinfix2}_"* \
         --red-name "${reds}" \
-        --violet "../../../../dat/gr/vfio_vs_vmux/acc_histogram_${violetinfix1}_"*"_${violetinfix2}_"* \
+        --violet "../../../../dat/vfio_vs_vmux2/acc_histogram_${violetinfix1}_"*"_${violetinfix2}_"* \
         --violet-name "${violets}" \
-        --purple "../../../../dat/gr/vfio_vs_vmux/acc_histogram_${purpleinfix1}_"*"_${purpleinfix2}_"* \
+        --purple "../../../../dat/vfio_vs_vmux2/acc_histogram_${purpleinfix1}_"*"_${purpleinfix2}_"* \
         --purple-name "${purples}" \
         --logarithmic \
         --compress \
@@ -87,21 +88,21 @@ for n in 'vfio' 'vmux'; do
         --output "load_latency_${infix}.pdf"
     
     ../../../../plot_packet_loss.py \
-        --black "../../../../dat/gr/vfio_vs_vmux/output_${blackinfix1}_"*"_${blackinfix2}_"* \
+        --black "../../../../dat/vfio_vs_vmux2/output_${blackinfix1}_"*"_${blackinfix2}_"* \
         --black-name "${blacks}" \
-        --blue "../../../../dat/gr/vfio_vs_vmux/output_${blueinfix1}_"*"_${blueinfix2}_"* \
+        --blue "../../../../dat/vfio_vs_vmux2/output_${blueinfix1}_"*"_${blueinfix2}_"* \
         --blue-name "${blues}" \
-        --green "../../../../dat/gr/vfio_vs_vmux/output_${greeninfix1}_"*"_${greeninfix2}_"* \
+        --green "../../../../dat/vfio_vs_vmux2/output_${greeninfix1}_"*"_${greeninfix2}_"* \
         --green-name "${greens}" \
-        --yellow "../../../../dat/gr/vfio_vs_vmux/output_${yellowinfix1}_"*"_${yellowinfix2}_"* \
+        --yellow "../../../../dat/vfio_vs_vmux2/output_${yellowinfix1}_"*"_${yellowinfix2}_"* \
         --yellow-name "${yellows}" \
-        --orange "../../../../dat/gr/vfio_vs_vmux/output_${orangeinfix1}_"*"_${orangeinfix2}_"* \
+        --orange "../../../../dat/vfio_vs_vmux2/output_${orangeinfix1}_"*"_${orangeinfix2}_"* \
         --orange-name "${oranges}" \
-        --red "../../../../dat/gr/vfio_vs_vmux/output_${redinfix1}_"*"_${redinfix2}_"* \
+        --red "../../../../dat/vfio_vs_vmux2/output_${redinfix1}_"*"_${redinfix2}_"* \
         --red-name "${reds}" \
-        --violet "../../../../dat/gr/vfio_vs_vmux/output_${violetinfix1}_"*"_${violetinfix2}_"* \
+        --violet "../../../../dat/vfio_vs_vmux2/output_${violetinfix1}_"*"_${violetinfix2}_"* \
         --violet-name "${violets}" \
-        --purple "../../../../dat/gr/vfio_vs_vmux/output_${purpleinfix1}_"*"_${purpleinfix2}_"* \
+        --purple "../../../../dat/vfio_vs_vmux2/output_${purpleinfix1}_"*"_${purpleinfix2}_"* \
         --purple-name "${purples}" \
         --width 6 \
         --height 2 \

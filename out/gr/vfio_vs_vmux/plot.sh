@@ -7,7 +7,7 @@ for n in 'vfio' 'vmux'; do
     i='ioregionfdoff'
     r='moongen'
 
-    for s in '60B' '124B' '252B' '380B' '508B' '764B' '1020B' '1514B'; do
+    for s in '60B' '124B' '252B' '380B' '508B' '600B' '700B' '764B' '1020B' '1514B'; do
         name="$m $n $q $v $i $r $s"
         infix1="${m}_${n}_${q}_${v}_${i}_${r}"
         infix2="$s"
@@ -18,7 +18,7 @@ for n in 'vfio' 'vmux'; do
             echo "Plotting load latency for ${name}"
 
             ../../../plot_load_latency.py \
-                --red "../../../dat/gr/vfio_vs_vmux/acc_histogram_${infix1}_"*"_${infix2}_"* \
+                --red "../../../dat/vfio_vs_vmux2/acc_histogram_${infix1}_"*"_${infix2}_"* \
                 --red-name "" \
                 --logarithmic \
                 --width 6 \
@@ -31,7 +31,7 @@ for n in 'vfio' 'vmux'; do
             echo "Plotting packet loss for ${name}"
 
             ../../../plot_packet_loss.py \
-                --red "../../../dat/gr/vfio_vs_vmux/output_${infix1}_"*"_${infix2}_"* \
+                --red "../../../dat/vfio_vs_vmux2/output_${infix1}_"*"_${infix2}_"* \
                 --red-name "" \
                 --width 6 \
                 --height 6 \

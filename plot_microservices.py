@@ -219,11 +219,16 @@ def main():
             linestyles += [ ':' ]
     # linestyles = [ '-', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--']
 
+    # low rpps measurements are broken
+    df = df[df.offered_load_rps >= 8 ]
+
     # Plot using Seaborn
     sns.pointplot(x='offered_load_rps', y='latency_mean', hue=df['name'], data=df,
                 palette='colorblind',
                 # kind='point',
-                # capsize=.05,  # errorbar='sd'
+                # capsize=.05,
+                # errorbar='sd',
+                errorbar=None,
                 markers=markers,
                 linestyles=linestyles,
                 )
@@ -247,7 +252,7 @@ def main():
     )
     plt.xlabel(XLABEL)
     plt.ylabel(YLABEL)
-    plt.ylim(0, 10)
+    plt.ylim(0, 20)
     # for container in ax.containers:
     #     ax.bar_label(container, fmt='%.0f')
 

@@ -32,11 +32,11 @@ hue_map = {
         '3_vmux-med_forwardbackward': 'vmux-e810-med',
 }
 
-YLABEL = 'Throughput (GBit/s)'
-XLABEL = 'Packet size (bytes)'
+YLABEL = 'Per-VM Throughput (GBit/s)'
+XLABEL = 'Num. of VMs'
 
 def map_hue(df_hue, hue_map):
-    return df_hue.apply(lambda row: hue_map[str(row)])
+    return df_hue.apply(lambda row: hue_map.get(str(row), row))
 
 
 

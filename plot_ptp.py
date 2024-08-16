@@ -45,9 +45,8 @@ def setup_parser():
 
     for color in COLORS:
         parser.add_argument(f'--{color}',
-                            type=argparse.FileType('r'),
-                            nargs='+',
-                            help=f'''Paths to PTP output files for
+                            type=str,
+                            help=f'''Path to PTP output files for
                                   the {color} plot''',
                             )
     for color in COLORS:
@@ -64,75 +63,66 @@ def plot():
     parser = setup_parser()
     args = parser.parse_args()
 
-    # Directory containing the data files
-    # data_dir = 'data_files'  # Change this to your directory containing the data files
-    data_files = [  "/home/hendrik/vmuxIO/test/ptptest/mediation-raw.txt", 
-                    "/home/hendrik/vmuxIO/test/ptptest/mediation-adjusted.txt", 
-                    "/home/hendrik/vmuxIO/test/ptptest/emulation-raw.txt", 
-                    "/home/hendrik/vmuxIO/test/ptptest/emulation-adjusted.txt",
-                    "/home/hendrik/vmuxIO/test/ptptest/mediation-raw.txt", 
-                    "/home/hendrik/vmuxIO/test/ptptest/mediation-adjusted.txt" ] # os.listdir(data_dir)
+    print(args.__dict__)
+    names = []  
+    paths = []
+    for color in COLORS:
+        if args.__dict__[color]:
+            names += [args.__dict__[f'{color}_name']]
+            paths += [str(args.__dict__[color])]
 
     # Initialize lists to store means and standard deviations
     means = []
     std_devs = []
     labels = []
+    
+    width = 0.35
 
     # Read data from each file, compute mean and standard deviation
-    for i, file_path in enumerate(data_files):
+    for i, file_path in enumerate(paths):
         # file_path = os.path.join(data_dir, data_file)
+        print(file_path)
         data = read_data(file_path)
-        means.append(np.mean(data))
+        means.append(np.abs(np.mean(data)))
         std_devs.append(np.std(data))
-        labels.append("File " + str(i))
+        labels.append(names[i])
     
-    
-    fig = plt.figure(figsize=(args.width, args.height))
-    ax = fig.add_subplot(1, 1, 1)
-    ax.set_axisbelow(True)
-    if args.title:
-        plt.title(args.title)
-    plt.grid()
-    # plt.xlim(0, 0.83)
-    ax.set_yscale('linear')
+        x = np.arange(len(labels))
 
-    sns.barplot(x=labels, y=means, ci=None, palette="muted")
-    print(means)
-    print(std_devs)
-    
-    for i, (mean, std) in enumerate(zip(means, std_devs)):
-        plt.errorbar(i, mean, yerr=std, fmt='none', c='black', capsize=5)
+        fig = plt.figure(figsize=(args.width, args.height))
+        ax = fig.add_subplot(1, 1, 1)
+        ax.set_axisbelow(True)
+        if args.title:
+            plt.title(args.title)
+        plt.grid()
 
-    # sns.move_legend(
-    #     ax, "lower center",
-    #     bbox_to_anchor=(0.45, 1),
-    #     ncol=1,
-    #     title=None,
-    #     frameon=False,
-    # )
-    ax.annotate(
-        "↑ Higher is better", # or ↓ ← ↑ →
-        xycoords="axes points",
-        # xy=(0, 0),
-        xy=(0, 0),
-        xytext=(-55, -28),
-        # fontsize=FONT_SIZE,
-        color="navy",
-        weight="bold",
-    )
-    plt.xlabel(XLABEL)
-    plt.ylabel(YLABEL)
+        fig, ax = plt.subplots(layout='constrained', figsize=(10, 6))
 
-    # for container in ax.containers:
-    #     ax.bar_label(container, fmt='%.0f')
+        rects1 = ax.bar(x - width/2, means, width, label='Abs(mean)')
+        rects2 = ax.bar(x + width/2, std_devs, width, label='Stdandard deviation')
 
-    # legend = plt.legend()
-    # legend.get_frame().set_facecolor('white')
-    # legend.get_frame().set_alpha(0.8)
-    plt.tight_layout()
-    plt.savefig(args.output.name)
-    plt.close()
+        ax.set_ylabel('Nanoseconds')
+        ax.set_title(args.title)
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels)
+        ax.legend(loc='best')
+        ax.set_yscale('log')
 
+        def add_bar_labels(rects):
+            for rect in rects:
+                height = rect.get_height()
+                ax.annotate(f'{height:.2f}',
+                            xy=(rect.get_x() + rect.get_width() / 2, height),
+                            xytext=(0, 3),  # 3 points vertical offset
+                            textcoords="offset points",
+                            ha='center', va='bottom')
+
+        add_bar_labels(rects1)
+        add_bar_labels(rects2)
+
+        plt.tight_layout()
+        plt.savefig("output.png") 
+        plt.show()
 
 if __name__ == '__main__':
     plot()

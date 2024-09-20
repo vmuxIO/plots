@@ -30,7 +30,7 @@ hue_map = {
     '9_vmux-med_software': 'vmux-med (software)',
 }
 
-YLABEL = 'Latency (ms)'
+YLABEL = 'Latency (P90, ms)'
 XLABEL = 'Offered load (req/s)'
 
 def map_hue(df_hue, hue_map):
@@ -100,7 +100,7 @@ class MicroserviceDataPoint:
     name: str
     app: str
     color: str
-    latency_median: float
+    latency_percentile: float
     latency_mean: float
     latency_stddev: float
     rps: float
@@ -157,7 +157,9 @@ class MicroserviceTest:
 
                 percentiles = pd.DataFrame(spectrum_lines, columns=["Value", "Percentile", "TotalCount", "1/(1-Percentile)"]).astype(float)
                 # is already in ms
-                percentile_50th = percentiles[percentiles.Percentile == 0.5].Value.values[0]
+                # percentile = percentiles[percentiles.Percentile == 0.5].Value.values[0]
+                percentile = percentiles[percentiles.Percentile == 0.9].Value.values[0]
+                # percentile = percentiles[percentiles.Percentile == 0.996094].Value.values[0]
 
 
                 # extract requests per second
@@ -172,7 +174,7 @@ class MicroserviceTest:
                     name=self.name,
                     app=app,
                     color=self.color,
-                    latency_median=percentile_50th,
+                    latency_percentile=percentile,
                     latency_mean=mean_value,
                     latency_stddev=stddev_value,
                     rps=rps,
@@ -263,16 +265,16 @@ def main():
 
         # Set different y-limits for different conditions
         if "media" in ax.get_title():
-            ax.set_ylim(0, 50)
+            ax.set_ylim(0, 100)
         elif "hotel" in ax.get_title():
-            ax.set_ylim(0, 15)
+            ax.set_ylim(0, 25)
         elif "social" in ax.get_title():
-            ax.set_ylim(0, 8)
+            ax.set_ylim(0, 10)
 
     grid.map_dataframe(pointplot_with_ylim,
     # grid.map_dataframe(sns.pointplot,
     # sns.pointplot(data=df,
-                x='offered_load_rps', y='latency_median', hue='name',
+                x='offered_load_rps', y='latency_percentile', hue='name',
                 palette='colorblind',
                 # kind='point',
                 # capsize=.05,

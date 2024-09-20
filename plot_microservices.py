@@ -98,6 +98,7 @@ def parse_args(parser):
 @dataclass
 class MicroserviceDataPoint:
     name: str
+    app: str
     color: str
     latency_mean: float
     latency_stddev: float
@@ -121,6 +122,10 @@ class MicroserviceTest:
                 offered_load_rps = filename.split('_')[-2]
                 offered_load_rps = offered_load_rps.split('rps')[0]
                 offered_load_rps = int(offered_load_rps)
+
+                # microservice application
+                app = str(basename(filename).split('_')[0])
+                # app = "appA"
 
                 # extract latencies
                 filtered = list(filter(lambda line: line.startswith("#[Mean"), lines))
@@ -146,6 +151,7 @@ class MicroserviceTest:
 
                 self.results[filename] = MicroserviceDataPoint(
                     name=self.name,
+                    app=app,
                     color=self.color,
                     latency_mean=mean_value,
                     latency_stddev=stddev_value,
@@ -202,12 +208,12 @@ def main():
 
     markers = []
     for hue in df['name'].unique():
-        if "media" in hue:
-            markers += [ (3, 2) ]
-        elif "hotel" in hue:
+        # if "Qemu" in hue:
+        #     markers += [ (3, 2) ]
+        if "Qemu" in hue:
             markers += [ 'x' ]
-        elif "social" in hue:
-            markers += [ (5, 2) ]
+        # elif "vMux" in hue:
+        #     markers += [ (5, 2) ]
         else:
             markers += [ 'o' ]
 
@@ -223,12 +229,36 @@ def main():
     df = df[df.offered_load_rps >= 8 ]
 
     # Plot using Seaborn
-    sns.pointplot(x='offered_load_rps', y='latency_mean', hue=df['name'], data=df,
+    grid = sns.FacetGrid(df,
+            col='app',
+            sharey = False,
+            sharex = False,
+            # gridspec_kws={"width_ratios": [11, 1]},
+    )
+
+    # wrap pointplot to set ylim
+    def pointplot_with_ylim(x, y, **kwargs):
+        ax = plt.gca()
+        sns.pointplot(x=x, y=y, **kwargs)
+
+        # Set different y-limits for different conditions
+        if "media" in ax.get_title():
+            ax.set_ylim(0, 50)
+        elif "hotel" in ax.get_title():
+            ax.set_ylim(0, 15)
+        elif "social" in ax.get_title():
+            ax.set_ylim(0, 8)
+
+    grid.map_dataframe(pointplot_with_ylim,
+    # grid.map_dataframe(sns.pointplot,
+    # sns.pointplot(data=df,
+                x='offered_load_rps', y='latency_mean', hue='name',
                 palette='colorblind',
                 # kind='point',
                 # capsize=.05,
                 # errorbar='sd',
                 errorbar=None,
+                estimator=np.median, # we get some nasty outliers in both vmux and baseline
                 markers=markers,
                 linestyles=linestyles,
                 )
@@ -243,16 +273,25 @@ def main():
         color="navy",
         weight="bold",
     )
-    sns.move_legend(
-        ax, "lower center",
-        bbox_to_anchor=(0.45, 1),
-        ncol=1,
-        title=None,
-        frameon=False,
-    )
-    plt.xlabel(XLABEL)
-    plt.ylabel(YLABEL)
-    plt.ylim(0, 20)
+    grid.add_legend(
+            # bbox_to_anchor=(0.5, 0.77),
+            loc='right',
+            ncol=1, title=None, frameon=False,
+                    )
+    # sns.move_legend(
+    #     ax, "lower center",
+    #     bbox_to_anchor=(0.45, 1),
+    #     ncol=1,
+    #     title=None,
+    #     frameon=False,
+    # )
+
+    grid.figure.set_size_inches(args.width, args.height)
+    # grid.set_titles("")
+    plt.subplots_adjust(bottom=0.25, right=0.78)
+
+    grid.set_xlabels(XLABEL)
+    grid.set_ylabels(YLABEL)
     # for container in ax.containers:
     #     ax.bar_label(container, fmt='%.0f')
 

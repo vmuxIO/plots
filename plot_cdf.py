@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import seaborn as sns
 import argparse
 from re import search
 from os.path import basename, getsize
@@ -137,14 +138,13 @@ class LoadLatencyPlot(object):
         y75 = np.array(_y75)[order]
         y99 = np.array(_y99)[order]
 
-        self._plot50, = plt.plot(
-            bin_edges[1:],
-            cdf,
+        self._plot50 = sns.lineplot(
+            x=bin_edges[1:],
+            y=cdf,
             label=f'{self._name}',
             color=self._line_color,
             linestyle=self._line,
-            linewidth=1,
-            marker='',
+            # linewidth=1
         )
 
 

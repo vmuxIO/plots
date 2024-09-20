@@ -179,17 +179,22 @@ def main():
     for i, legend_patch in enumerate(grid._legend.get_patches()):
         hatch = hatches[i % len(hatches)]
         legend_patch.set_hatch(f"{hatch}{hatch}")
+
     # add hatches to bars
-    hatches_used = 0
     for (i, j, k), data in grid.facet_data():
+        hatches_used = -1
+        bars_hatched = 0
+        print(i, j, k)
         for bar in grid.facet_axis(i, j).patches:
+            if bars_hatched % 7 == 0:
+                hatches_used += 1
+            bars_hatched += 1
             if bar.get_bbox().x0 == 0 and bar.get_bbox().x1 == 0 and bar.get_bbox().y0 == 0 and bar.get_bbox().y1 == 0:
                 # skip bars that are not rendered
                 continue
             hatch = hatches[hatches_used % len(hatches)]
-            print(bar, hatch)
+            print(bar, hatches_used, hatch)
             bar.set_hatch(hatch)
-            hatches_used += 1
 
     grid.facet_axis(0, 0).annotate(
         "↑ Higher is better", # or ↓

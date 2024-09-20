@@ -100,6 +100,7 @@ class MicroserviceDataPoint:
     name: str
     app: str
     color: str
+    latency_median: float
     latency_mean: float
     latency_stddev: float
     rps: float
@@ -141,6 +142,24 @@ class MicroserviceTest:
                 stddev_value = float(stddev_value)
                 # self.latencies[filename] = (mean_value, stddev_value)
 
+                # extract percentiles
+                spectrum_lines = None
+                for line in lines:
+                    if "Detailed Percentile spectrum:" in line:
+                        spectrum_lines = []
+                        continue
+                    if "inf" in line:
+                        break # end of spectrum
+                    if spectrum_lines is not None:
+                        # parse
+                        row = findall(r'\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)', line)
+                        spectrum_lines += row
+
+                percentiles = pd.DataFrame(spectrum_lines, columns=["Value", "Percentile", "TotalCount", "1/(1-Percentile)"]).astype(float)
+                # is already in ms
+                percentile_50th = percentiles[percentiles.Percentile == 0.5].Value.values[0]
+
+
                 # extract requests per second
                 filtered = list(filter(lambda line: line.startswith("Requests/sec:"), lines))
                 assert len(filtered) == 1
@@ -153,6 +172,7 @@ class MicroserviceTest:
                     name=self.name,
                     app=app,
                     color=self.color,
+                    latency_median=percentile_50th,
                     latency_mean=mean_value,
                     latency_stddev=stddev_value,
                     rps=rps,
@@ -252,13 +272,13 @@ def main():
     grid.map_dataframe(pointplot_with_ylim,
     # grid.map_dataframe(sns.pointplot,
     # sns.pointplot(data=df,
-                x='offered_load_rps', y='latency_mean', hue='name',
+                x='offered_load_rps', y='latency_median', hue='name',
                 palette='colorblind',
                 # kind='point',
                 # capsize=.05,
                 # errorbar='sd',
                 errorbar=None,
-                estimator=np.median, # we get some nasty outliers in both vmux and baseline
+                # estimator=np.median,
                 markers=markers,
                 linestyles=linestyles,
                 )

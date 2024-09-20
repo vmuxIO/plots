@@ -35,12 +35,12 @@ LINES = {
 # COLORS = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 
 # Set global font size
-plt.rcParams['font.size'] = 10  # Sets the global font size to 14
-plt.rcParams['axes.labelsize'] = 10  # Sets axis label size
-plt.rcParams['xtick.labelsize'] = 8  # Sets x-tick label size
-plt.rcParams['ytick.labelsize'] = 8  # Sets y-tick label size
-plt.rcParams['legend.fontsize'] = 8  # Sets legend font size
-plt.rcParams['axes.titlesize'] = 16  # Sets title font size
+# plt.rcParams['font.size'] = 10  # Sets the global font size to 14
+# plt.rcParams['axes.labelsize'] = 10  # Sets axis label size
+# plt.rcParams['xtick.labelsize'] = 8  # Sets x-tick label size
+# plt.rcParams['ytick.labelsize'] = 8  # Sets y-tick label size
+# plt.rcParams['legend.fontsize'] = 8  # Sets legend font size
+# plt.rcParams['axes.titlesize'] = 16  # Sets title font size
 
 class LatencyHistogram(object):
     _filepath = None

@@ -189,6 +189,8 @@ def main():
     for hue in df['hue'].unique():
         if hue == 'Qemu-pt':
             markers += [ 'o' ]
+        elif "vMux" in hue:
+            markers += [ 'o' ]
         else:
             markers += [ 'x' ]
     linestyles = []

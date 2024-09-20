@@ -182,19 +182,31 @@ def main():
 
     # add hatches to bars
     for (i, j, k), data in grid.facet_data():
-        hatches_used = -1
-        bars_hatched = 0
         print(i, j, k)
-        for bar in grid.facet_axis(i, j).patches:
-            if bars_hatched % 7 == 0:
-                hatches_used += 1
-            bars_hatched += 1
-            if bar.get_bbox().x0 == 0 and bar.get_bbox().x1 == 0 and bar.get_bbox().y0 == 0 and bar.get_bbox().y1 == 0:
-                # skip bars that are not rendered
-                continue
-            hatch = hatches[hatches_used % len(hatches)]
-            print(bar, hatches_used, hatch)
-            bar.set_hatch(hatch)
+        def barplot_add_hatches(plot_in_grid, nr_hues, offset=0):
+            hatches_used = -1
+            bars_hatched = 0
+            for bar in plot_in_grid.patches:
+                if nr_hues <= 1:
+                    hatches_used += 1
+                else: # with multiple hues, we draw bars with the same hatch in batches
+                    if bars_hatched % nr_hues == 0:
+                        hatches_used += 1
+                # if bars_hatched % 7 == 0:
+                #     hatches_used += 1
+                bars_hatched += 1
+                if bar.get_bbox().x0 == 0 and bar.get_bbox().x1 == 0 and bar.get_bbox().y0 == 0 and bar.get_bbox().y1 == 0:
+                    # skip bars that are not rendered
+                    continue
+                hatch = hatches[(offset + hatches_used) % len(hatches)]
+                print(bar, hatches_used, hatch)
+                bar.set_hatch(hatch)
+
+        if (i, j, k) == (0, 0, 0):
+            barplot_add_hatches(grid.facet_axis(i, j), 7)
+        elif (i, j, k) == (0, 1, 0):
+            barplot_add_hatches(grid.facet_axis(i, j), 1, offset=7)
+
 
     grid.facet_axis(0, 0).annotate(
         "↑ Higher is better", # or ↓

@@ -157,6 +157,8 @@ def main():
     grid = sns.FacetGrid(df,
             col='is_passthrough',
             sharey = False,
+            sharex = False,
+            gridspec_kws={"width_ratios": [11, 1]},
     )
     grid.map_dataframe(sns.barplot,
     # grid.map_dataframe(barplot_with_hatches,
@@ -201,7 +203,7 @@ def main():
 
     grid.figure.set_size_inches(args.width, args.height)
     grid.set_titles("")
-    plt.subplots_adjust(top=0.5, left=0.2, right=0.95)
+    plt.subplots_adjust(top=0.5, bottom=0.14, left=0.12, right=0.95)
     # bar = sns.barplot(x='num_vms', y='rxMppsCalc', hue="hue", data=pd.concat(dfs),
     #             palette='colorblind',
     #             edgecolor='dimgray',

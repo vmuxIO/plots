@@ -128,7 +128,7 @@ def main():
     df_hue = map_hue(df_hue, hue_map)
 
     # Plot using Seaborn
-    sns.catplot(x='num_vms', y='GBit/s', hue=df_hue, data=pd.concat(dfs), palette='colorblind', kind='point',
+    sns.catplot(x='length', y='GBit/s', hue=df_hue, data=pd.concat(dfs), palette='colorblind', kind='point',
                 capsize=.05,  # errorbar='sd'
                 )
     # sns.move_legend(

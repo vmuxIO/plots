@@ -307,10 +307,20 @@ def main():
     #     title=None,
     #     frameon=False,
     # )
+    grid.facet_axis(0, 0).annotate(
+        "↓ Lower is better", # or ↓ ← ↑ →
+        xycoords="axes points",
+        # xy=(0, 0),
+        xy=(0, 0),
+        xytext=(-50, -43),
+        # fontsize=FONT_SIZE,
+        color="navy",
+        weight="bold",
+    )
 
     grid.figure.set_size_inches(args.width, args.height)
     # grid.set_titles("")
-    plt.subplots_adjust(bottom=0.25, right=0.78)
+    plt.subplots_adjust(bottom=0.34, right=0.78)
 
     grid.set_xlabels(XLABEL)
     grid.set_ylabels(YLABEL)

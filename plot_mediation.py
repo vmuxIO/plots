@@ -169,8 +169,10 @@ def main():
                        edgecolor="dimgray",
                        )
 
-    grid.add_legend(bbox_to_anchor=(0.5, 0.77), loc='center',
-                    ncol=1, title=None, frameon=False,
+    grid.add_legend(
+            # bbox_to_anchor=(0.5, 0.77),
+            loc='right',
+            ncol=1, title=None, frameon=False,
                     )
 
     # Fix the legend hatches
@@ -203,7 +205,7 @@ def main():
 
     grid.figure.set_size_inches(args.width, args.height)
     grid.set_titles("")
-    plt.subplots_adjust(top=0.5, bottom=0.14, left=0.12, right=0.95)
+    plt.subplots_adjust(left=0.06)
     # bar = sns.barplot(x='num_vms', y='rxMppsCalc', hue="hue", data=pd.concat(dfs),
     #             palette='colorblind',
     #             edgecolor='dimgray',
@@ -226,6 +228,18 @@ def main():
     # )
     grid.set_xlabels(XLABEL)
     grid.set_ylabels(YLABEL)
+
+    grid.facet_axis(0, 0).annotate(
+        "↓ Lower is better", # or ↓ ← ↑ →
+        xycoords="axes points",
+        # xy=(0, 0),
+        xy=(0, 0),
+        xytext=(-37, -28),
+        # fontsize=FONT_SIZE,
+        color="navy",
+        weight="bold",
+    )
+
     # plt.ylim(0, 1)
     if not args.logarithmic:
         plt.ylim(bottom=0)

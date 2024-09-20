@@ -1,13 +1,13 @@
 VERSION := vmux0.0.10-pre
 DATA_DIR := ../dat/$(VERSION)/
 DATA_FILES = $(wildcard $(DATA_DIR)/*)
-DATA_DIR_MICROSERVICES := ../dat/vmux0.0.10-pre/
-DATA_FILES_MICROSERVICES = $(wildcard ../dat/$(DATA_DIR_MICROSERVICES)/*)
+DATA_DIR_YCSB := ../dat/vmux0.0.9/
+DATA_FILES_YCSB = $(wildcard ../dat/$(DATA_DIR_YCSB)/*)
 OUT_DIR := ../out/$(VERSION)/
 # OUT_DIR := ./
 
-PAPER_FIGURES := microbenchmark-cdf.pdf microbenchmark-bars.pdf mediation.pdf microservices.pdf ycsb.pdf
-# PAPER_FIGURES := mediation.pdf microservices.pdf ycsb.pdf
+# PAPER_FIGURES := microbenchmark-cdf.pdf microbenchmark-bars.pdf mediation.pdf microservices.pdf ycsb.pdf
+PAPER_FIGURES := mediation.pdf microservices.pdf ycsb.pdf
 # PAPER_FIGURES := mediation.pdf iperf.pdf ycsb.pdf
 
 WIDTH := 4.4
@@ -25,38 +25,38 @@ install:
 	# cp microbenchmark-cdf.pdf $(OVERLEAF)/microbenchmark-cdf.pdf
 	# cp microbenchmark-bars.pdf $(OVERLEAF)/microbenchmark-bars.pdf
 
-ycsb.pdf: $(DATA_FILES) ../plot_ycsb.py
+ycsb.pdf: $(DATA_FILES_YCSB) ../plot_ycsb.py
 	python3 ../plot_ycsb.py -o $(OUT_DIR)/ycsb.pdf \
-		-W $(WIDTH) -H 4.5 \
-		--1-name "Qemu-pt" --1 $(DATA_DIR)/ycsb_*vms_vfio_-1rps_rep*.csv \
-		--2-name "Qemu-e1000" --2 $(DATA_DIR)/ycsb_*vms_bridge-e1000_-1rps_rep*.csv \
-		--3-name "Qemu-VirtIO" --3 $(DATA_DIR)/ycsb_*vms_bridge_-1rps_rep*.csv \
-		--4-name "Qemu-vhost" --4 $(DATA_DIR)/ycsb_*vms_bridge-vhost_-1rps_rep*.csv \
-		--5-name "vMux-emu-e1000" --5 $(DATA_DIR)/ycsb_*vms_vmux-emu_-1rps_rep*.csv \
-		--6-name "vMux-emu-e810" --6 $(DATA_DIR)/ycsb_*vms_vmux-dpdk-e810_-1rps_rep*.csv \
-		--7-name "vMux-med-e810" --7 $(DATA_DIR)/ycsb_*vms_vmux-med_-1rps_rep*.csv \
+		-W $(WIDTH) -H 2.2 \
+		--1-name "Qemu-pt" --1 $(DATA_DIR_YCSB)/ycsb_*vms_vfio_-1rps_rep*.csv \
+		--2-name "Qemu-e1000" --2 $(DATA_DIR_YCSB)/ycsb_*vms_bridge-e1000_-1rps_rep*.csv \
+		--3-name "Qemu-VirtIO" --3 $(DATA_DIR_YCSB)/ycsb_*vms_bridge_-1rps_rep*.csv \
+		--4-name "Qemu-vhost" --4 $(DATA_DIR_YCSB)/ycsb_*vms_bridge-vhost_-1rps_rep*.csv \
+		--5-name "vMux-emu-e1000" --5 $(DATA_DIR_YCSB)/ycsb_*vms_vmux-emu_-1rps_rep*.csv \
+		--6-name "vMux-emu-e810" --6 $(DATA_DIR_YCSB)/ycsb_*vms_vmux-dpdk-e810_-1rps_rep*.csv \
+		--7-name "vMux-med-e810" --7 $(DATA_DIR_YCSB)/ycsb_*vms_vmux-med_-1rps_rep*.csv \
 
 # vMux emu doesnt work and hence does not appear in the plot
-microservices.pdf: $(DATA_FILES_MICROSERVICES) ../plot_microservices.py
+microservices.pdf: $(DATA_FILES) ../plot_microservices.py
 	python3 ../plot_microservices.py -o $(OUT_DIR)/microservices.pdf -W $(DWIDTH) -H 1.8 \
-  	--1-name "Qemu-VirtIO" --1 $(DATA_DIR_MICROSERVICES)/mediaMicroservices_bridge_33vms_*rps_rep?.log \
-  	--2-name "Qemu-vhost" --2 $(DATA_DIR_MICROSERVICES)/mediaMicroservices_bridge-vhost_33vms_*rps_rep?.log \
-  	--3-name "Qemu-e1000" --3 $(DATA_DIR_MICROSERVICES)/mediaMicroservices_bridge-e1000_33vms_*rps_rep?.log \
-  	--4-name "vMux-emu-e1000" --4 $(DATA_DIR_MICROSERVICES)/mediaMicroservices_vmux-emu_33vms_*rps_rep?.log \
-  	--5-name "vMux-emu-e810" --5 $(DATA_DIR_MICROSERVICES)/mediaMicroservices_vmux-dpdk-e810_33vms_*rps_rep?.log \
-  	--6-name "vMux-med-e810" --6 $(DATA_DIR_MICROSERVICES)/mediaMicroservices_vmux-med_33vms_*rps_rep?.log \
-  	--7-name "Qemu-VirtIO" --7 $(DATA_DIR_MICROSERVICES)/hotelReservation_bridge_19vms_*rps_rep?.log \
-  	--8-name "Qemu-vhost" --8 $(DATA_DIR_MICROSERVICES)/hotelReservation_bridge-vhost_19vms_*rps_rep?.log \
-  	--9-name "Qemu-e1000" --9 $(DATA_DIR_MICROSERVICES)/hotelReservation_bridge-e1000_19vms_*rps_rep?.log \
-  	--10-name "vMux-emu-e1000" --10 $(DATA_DIR_MICROSERVICES)/hotelReservation_vmux-emu_19vms_*rps_rep?.log \
-  	--11-name "vMux-emu-e810" --11 $(DATA_DIR_MICROSERVICES)/hotelReservation_vmux-dpdk-e810_19vms_*rps_rep?.log \
-  	--12-name "vMux-med-e810" --12 $(DATA_DIR_MICROSERVICES)/hotelReservation_vmux-med_19vms_*rps_rep?.log \
-  	--13-name "Qemu-VirtIO" --13 $(DATA_DIR_MICROSERVICES)/socialNetwork_bridge_27vms_*rps_rep?.log \
-  	--14-name "Qemu-vhost" --14 $(DATA_DIR_MICROSERVICES)/socialNetwork_bridge-vhost_27vms_*rps_rep?.log \
-  	--15-name "Qemu-e1000" --15 $(DATA_DIR_MICROSERVICES)/socialNetwork_bridge-e1000_27vms_*rps_rep?.log \
-  	--16-name "vMux-emu-e1000" --16 $(DATA_DIR_MICROSERVICES)/socialNetwork_vmux-emu_27vms_*rps_rep?.log \
-  	--17-name "vMux-emu-e810" --17 $(DATA_DIR_MICROSERVICES)/socialNetwork_vmux-dpdk-e810_27vms_*rps_rep?.log \
-  	--18-name "vMux-med-e810" --18 $(DATA_DIR_MICROSERVICES)/socialNetwork_vmux-med_27vms_*rps_rep?.log \
+  	--1-name "Qemu-VirtIO" --1 $(DATA_DIR)/mediaMicroservices_bridge_33vms_*rps_rep?.log \
+  	--2-name "Qemu-vhost" --2 $(DATA_DIR)/mediaMicroservices_bridge-vhost_33vms_*rps_rep?.log \
+  	--3-name "Qemu-e1000" --3 $(DATA_DIR)/mediaMicroservices_bridge-e1000_33vms_*rps_rep?.log \
+  	--4-name "vMux-emu-e1000" --4 $(DATA_DIR)/mediaMicroservices_vmux-emu_33vms_*rps_rep?.log \
+  	--5-name "vMux-emu-e810" --5 $(DATA_DIR)/mediaMicroservices_vmux-dpdk-e810_33vms_*rps_rep?.log \
+  	--6-name "vMux-med-e810" --6 $(DATA_DIR)/mediaMicroservices_vmux-med_33vms_*rps_rep?.log \
+  	--7-name "Qemu-VirtIO" --7 $(DATA_DIR)/hotelReservation_bridge_19vms_*rps_rep?.log \
+  	--8-name "Qemu-vhost" --8 $(DATA_DIR)/hotelReservation_bridge-vhost_19vms_*rps_rep?.log \
+  	--9-name "Qemu-e1000" --9 $(DATA_DIR)/hotelReservation_bridge-e1000_19vms_*rps_rep?.log \
+  	--10-name "vMux-emu-e1000" --10 $(DATA_DIR)/hotelReservation_vmux-emu_19vms_*rps_rep?.log \
+  	--11-name "vMux-emu-e810" --11 $(DATA_DIR)/hotelReservation_vmux-dpdk-e810_19vms_*rps_rep?.log \
+  	--12-name "vMux-med-e810" --12 $(DATA_DIR)/hotelReservation_vmux-med_19vms_*rps_rep?.log \
+  	--13-name "Qemu-VirtIO" --13 $(DATA_DIR)/socialNetwork_bridge_27vms_*rps_rep?.log \
+  	--14-name "Qemu-vhost" --14 $(DATA_DIR)/socialNetwork_bridge-vhost_27vms_*rps_rep?.log \
+  	--15-name "Qemu-e1000" --15 $(DATA_DIR)/socialNetwork_bridge-e1000_27vms_*rps_rep?.log \
+  	--16-name "vMux-emu-e1000" --16 $(DATA_DIR)/socialNetwork_vmux-emu_27vms_*rps_rep?.log \
+  	--17-name "vMux-emu-e810" --17 $(DATA_DIR)/socialNetwork_vmux-dpdk-e810_27vms_*rps_rep?.log \
+  	--18-name "vMux-med-e810" --18 $(DATA_DIR)/socialNetwork_vmux-med_27vms_*rps_rep?.log \
 
 iperf.pdf: $(DATA_FILES) ../plot_iperf.py
 	python3 ../plot_iperf.py -W $(WIDTH) -H 2 \
@@ -80,7 +80,7 @@ iperf-udp.pdf: $(DATA_FILES) ../plot_iperf.py
 
 
 mediation.pdf: $(DATA_FILES) ../plot_mediation.py
-	python3 ../plot_mediation.py -W $(WIDTH) -H 5 -l \
+	python3 ../plot_mediation.py -W $(DWIDTH) -H 2.5 -l \
   	-o $(OUT_DIR)/mediation.pdf \
   	--1-name "vMux-med-e810 (w/ rte_flow)" --1 $(DATA_DIR)/mediation_hardware_*vms_vmux-med_40000kpps_rep?.log \
   	--2-name "vMux-med-e810" --2 $(DATA_DIR)/mediation_software_*vms_vmux-med_40000kpps_rep?.log \

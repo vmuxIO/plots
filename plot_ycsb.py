@@ -34,7 +34,7 @@ hue_map = {
     '2.0_vmux-med_-1.0_overall': 'vmux-med-e810'
 }
 
-YLABEL = 'Per-VM request rate (req/s)'
+YLABEL = 'Per-VM requests (req/s)'
 XLABEL = 'Nr. of VMs'
 
 def map_hue(df_hue, hue_map):
@@ -191,6 +191,12 @@ def main():
             markers += [ 'o' ]
         else:
             markers += [ 'x' ]
+    linestyles = []
+    for hue in df['hue'].unique():
+        if "vMux" in hue:
+            linestyles += [ '-' ]
+        else:
+            linestyles += [ ':' ]
     # markers = { 'vMux-emu-e810': 'x' }
     # markers = [ 'x', '.', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x' ]
     # linestyles = [ '-', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--']
@@ -201,12 +207,12 @@ def main():
                 capsize=.05,  # errorbar='sd'
                 markers=markers,
                 # linestyles=['-', '--'],
-                # linestyles=linestyles,
+                linestyles=linestyles,
                 )
 
     sns.move_legend(
-        ax, "lower center",
-        bbox_to_anchor=(0.45, 1),
+        ax, "upper left",
+        bbox_to_anchor=(1, 1),
         ncol=1,
         title=None,
         frameon=False,
@@ -216,11 +222,12 @@ def main():
         xycoords="axes points",
         # xy=(0, 0),
         xy=(0, 0),
-        xytext=(-55, -28),
+        xytext=(-55, -42),
         # fontsize=FONT_SIZE,
         color="navy",
         weight="bold",
     )
+    # plt.subplots_adjust(right=0.3)
     plt.xlabel(XLABEL)
     plt.ylabel(YLABEL)
     plt.ylim(bottom=0)

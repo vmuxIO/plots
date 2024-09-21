@@ -7,8 +7,6 @@ DATA_FILES = $(wildcard $(DATA_DIR)/*)
 
 DATA_DIR_YCSB := ../dat/vmux0.0.9/
 DATA_FILES_YCSB = $(wildcard ../dat/$(DATA_DIR_YCSB)/*)
-DATA_DIR_AUTOTEST := ../dat/vmux0.0.6/
-DATA_FILES_AUTOTEST = $(wildcard ../dat/$(DATA_DIR_CDF)/*)
 
 PAPER_FIGURES := microbenchmark-cdf.pdf microbenchmark-bars.pdf mediation.pdf microservices.pdf ycsb.pdf
 # PAPER_FIGURES := mediation.pdf microservices.pdf ycsb.pdf
@@ -117,19 +115,19 @@ mediation-fast.pdf: $(DATA_FILES) ../plot_mediation.py
   	--7-name "Qemu-pt (w/ rte_flow)" --7 $(DATA_DIR)/mediation_hardware_*vms_vfio_40000kpps_rep?.log \
   	# --2-name "vMux-med-e810" --2 $(DATA_DIR)/mediation_hardware_*vms_vmux-med_1000kpps_rep?.log \
 
-microbenchmark-cdf.pdf: $(DATA_FILES_AUTOTEST) ../plot_cdf.py
+microbenchmark-cdf.pdf: $(DATA_FILES) ../plot_cdf.py
 	python3 ../plot_cdf.py -W $(WIDTH) -H 3 -l \
   	-o $(OUT_DIR)/microbenchmark-cdf.pdf \
-  	--1-name "vMux-pt" "l-" "blue" --1 $(DATA_DIR_AUTOTEST)/autotest/acc_histogram_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
-  	--2-name "vMux-emu-e1000" "l--" "magenta" --2 $(DATA_DIR_AUTOTEST)/autotest/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--3-name "vMux-emu-e810" "l--" "orange" --3 $(DATA_DIR_AUTOTEST)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--4-name "vMux-med-e810" "l-" "brown" --4 $(DATA_DIR_AUTOTEST)/autotest/acc_histogram_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--5-name "Qemu-pt" "l-." "red" --5 $(DATA_DIR_AUTOTEST)/autotest/acc_histogram_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
+  	--1-name "vMux-pt" "l-" "blue" --1 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
+  	--2-name "vMux-emu-e1000" "l--" "magenta" --2 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--3-name "vMux-emu-e810" "l--" "orange" --3 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--4-name "vMux-med-e810" "l-" "brown" --4 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--5-name "Qemu-pt" "l-." "red" --5 $(DATA_DIR)/autotest/acc_histogram_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
   	--6-name "Qemu-vhost" "l:" "green" --6 ../dat/gr/virtio/acc_histogram_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--7-name "Qemu-virtio" "l:" "cyan" --7 $(DATA_DIR_AUTOTEST)/autotest/acc_histogram_pcvm_bridge_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--8-name "Qemu-emu-e1000" "l:" "violet" --8 $(DATA_DIR_AUTOTEST)/autotest/acc_histogram_pcvm_bridge-e1000_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--7-name "Qemu-VirtIO" "l:" "cyan" --7 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--8-name "Qemu-e1000" "l:" "violet" --8 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge-e1000_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
 
-#  	--m-name "vMux-emu-e810 10kpps" --m $(DATA_DIR_AUTOTEST)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv
+#  	--m-name "vMux-emu-e810 10kpps" --m $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv
 #  	--m-name "vMux-spacing" --m ../dat/vmux-spacing/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_1000kpps_60B_*s.csv
 #  	--m-name "vMux-emu x" --m ../dat/vmux0.0.5/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_30kpps_60B_*s.csv \
 #  	--c-name "Qemu-emu 10kpps" --c ../dat/gr/virtio/acc_histogram_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_10kpps_60B_30s.csv \
@@ -155,17 +153,17 @@ me-cdf.pdf: $(DATA_FILES) ../plot_cdf.py
 
 # --red-name "vfio wtf" --red dat/vfio_vs_vmux2/acc_histogram_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_10000kpps_1020B_30s.csv \
 
-microbenchmark-bars.pdf: $(DATA_FILES_AUTOTEST) ../plot_throughput_bars.py
+microbenchmark-bars.pdf: $(DATA_FILES) ../plot_throughput_bars.py
 	python3 ../plot_throughput_bars.py -W $(WIDTH) -H 3 -l \
   	-o $(OUT_DIR)/microbenchmark-bars.pdf \
-  	--1-name "vMux-pt" --1 $(DATA_DIR_AUTOTEST)/autotest/output_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \
-  	--2-name "Qemu-pt" --2 $(DATA_DIR_AUTOTEST)/autotest/output_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \
-   	--3-name "Qemu-e1000" --3 $(DATA_DIR_AUTOTEST)/autotest/output_pcvm_bridge-e1000_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
-   	--4-name "Qemu-VirtIO" --4 $(DATA_DIR_AUTOTEST)/autotest/output_pcvm_bridge_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
-   	--5-name "Qemu-vhost" --5 $(DATA_DIR_AUTOTEST)/autotest/output_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
-   	--6-name "vMux-emu-e1000" --6 $(DATA_DIR_AUTOTEST)/autotest/output_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
-   	--7-name "vMux-emu-e810" --7 $(DATA_DIR_AUTOTEST)/autotest/output_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
-   	--8-name "vMux-med-e810" --8 $(DATA_DIR_AUTOTEST)/autotest/output_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
+  	--1-name "vMux-pt" --1 $(DATA_DIR)/autotest/output_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \
+  	--2-name "Qemu-pt" --2 $(DATA_DIR)/autotest/output_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \
+   	--3-name "Qemu-e1000" --3 $(DATA_DIR)/autotest/output_pcvm_bridge-e1000_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
+   	--4-name "Qemu-VirtIO" --4 $(DATA_DIR)/autotest/output_pcvm_bridge_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
+   	--5-name "Qemu-vhost" --5 $(DATA_DIR)/autotest/output_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
+   	--6-name "vMux-emu-e1000" --6 $(DATA_DIR)/autotest/output_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
+   	--7-name "vMux-emu-e810" --7 $(DATA_DIR)/autotest/output_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
+   	--8-name "vMux-med-e810" --8 $(DATA_DIR)/autotest/output_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
 
 # # this (big packets) is boring
 # python3 ../plot_throughput_bars.py -W 3.3 -H 2 -l \

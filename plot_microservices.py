@@ -197,6 +197,10 @@ def main():
 
     fig = plt.figure(figsize=(args.width, args.height))
     ax = fig.add_subplot(1, 1, 1)
+
+    sns.set_theme()
+    sns.set_style("whitegrid")
+
     ax.set_axisbelow(True)
     if args.title:
         plt.title(args.title)
@@ -233,7 +237,7 @@ def main():
         # if "Qemu" in hue:
         #     markers += [ (3, 2) ]
         if "Qemu" in hue:
-            markers += [ 'x' ]
+            markers += [ 'X' ]
         # elif "vMux" in hue:
         #     markers += [ (5, 2) ]
         else:
@@ -265,23 +269,28 @@ def main():
 
         # Set different y-limits for different conditions
         if "media" in ax.get_title():
-            ax.set_ylim(0, 100)
+            ax.set_ylim(0, 65)
         elif "hotel" in ax.get_title():
-            ax.set_ylim(0, 25)
+            ax.set_ylim(9, 21)
         elif "social" in ax.get_title():
-            ax.set_ylim(0, 10)
+            ax.set_ylim(2, 9)
 
     grid.map_dataframe(pointplot_with_ylim,
     # grid.map_dataframe(sns.pointplot,
     # sns.pointplot(data=df,
                 x='offered_load_rps', y='latency_percentile', hue='name',
                 palette='colorblind',
+                # palette='deep',
+                linewidth=2,
                 # kind='point',
                 # capsize=.05,
                 # errorbar='sd',
                 errorbar=None,
                 # estimator=np.median,
                 markers=markers,
+                markeredgecolor='white',
+                markersize=6,
+                markeredgewidth=1,
                 linestyles=linestyles,
                 )
 

@@ -150,7 +150,7 @@ def main():
     df['is_passthrough'] = df.apply(lambda row: True if "vmux-pt" in row['interface'] or "vfio" in row['interface'] else False, axis=1)
 
     # map colors to hues
-    colors = sns.color_palette("pastel", len(df['hue'].unique()))
+    colors = sns.color_palette("pastel", len(df['hue'].unique())-1) + [ mcolors.to_rgb('sandybrown') ]
     palette = dict(zip(df['hue'].unique(), colors))
 
     # Plot using Seaborn

@@ -29,7 +29,7 @@ install:
 
 ycsb.pdf: $(DATA_FILES_YCSB) ../plot_ycsb.py
 	python3 ../plot_ycsb.py -o $(OUT_DIR)/ycsb.pdf \
-		-W $(WIDTH) -H 2.2 \
+		-W $(WIDTH) -H 2.5 \
 		--1-name "Qemu-pt" --1 $(DATA_DIR_YCSB)/ycsb_*vms_vfio_-1rps_rep*.csv \
 		--2-name "Qemu-e1000" --2 $(DATA_DIR_YCSB)/ycsb_*vms_bridge-e1000_-1rps_rep*.csv \
 		--3-name "Qemu-VirtIO" --3 $(DATA_DIR_YCSB)/ycsb_*vms_bridge_-1rps_rep*.csv \

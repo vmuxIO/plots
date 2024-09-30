@@ -155,6 +155,9 @@ def main():
     parser = setup_parser()
     args = parse_args(parser)
 
+    sns.set_theme()
+    sns.set_style("whitegrid")
+
     fig = plt.figure(figsize=(args.width, args.height))
     ax = fig.add_subplot(1, 1, 1)
     ax.set_axisbelow(True)
@@ -192,7 +195,7 @@ def main():
         elif "vMux" in hue:
             markers += [ 'o' ]
         else:
-            markers += [ 'x' ]
+            markers += [ 'X' ]
     linestyles = []
     for hue in df['hue'].unique():
         if "vMux" in hue:
@@ -206,10 +209,17 @@ def main():
     # Plot using Seaborn
     sns.pointplot(x='num_vms', y='ops_per_sec', hue="hue", data=df, palette='colorblind',
                 # kind='point',
-                capsize=.05,  # errorbar='sd'
+                err_kws={'linewidth': 1},
+                capsize=.01,  # errorbar='sd'
                 markers=markers,
                 # linestyles=['-', '--'],
                 linestyles=linestyles,
+                linewidth=2,
+                markeredgecolor='white',
+                markersize=6,
+                markeredgewidth=1,
+                native_scale=True,
+                log_scale=(True, False),
                 )
 
     sns.move_legend(
@@ -224,7 +234,7 @@ def main():
         xycoords="axes points",
         # xy=(0, 0),
         xy=(0, 0),
-        xytext=(-55, -42),
+        xytext=(-55, -46),
         # fontsize=FONT_SIZE,
         color="navy",
         weight="bold",
@@ -235,6 +245,7 @@ def main():
     plt.ylim(bottom=0)
     # for container in ax.containers:
     #     ax.bar_label(container, fmt='%.0f')
+    sns.despine()
 
     # legend = plt.legend()
     # legend.get_frame().set_facecolor('white')

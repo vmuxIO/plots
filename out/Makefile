@@ -84,17 +84,17 @@ iperf-udp.pdf: $(DATA_FILES) ../plot_iperf.py
 mediation.pdf: $(DATA_FILES) ../plot_mediation.py
 	python3 ../plot_mediation.py -W $(DWIDTH) -H 2.5 -l \
   	-o $(OUT_DIR)/mediation.pdf \
-  	--1-name "vMux-med-e810 (w/ rte_flow)" --1 $(DATA_DIR)/mediation_hardware_*vms_vmux-med_40000kpps_rep?.log \
-  	--2-name "vMux-med-e810" --2 $(DATA_DIR)/mediation_software_*vms_vmux-med_40000kpps_rep?.log \
-  	--3-name "vMux-emu-e810 (w/ rte_flow)" --3 $(DATA_DIR)/mediation_hardware_*vms_vmux-dpdk-e810_40000kpps_rep?.log \
-  	--4-name "vMux-emu-e810" --4 $(DATA_DIR)/mediation_software_*vms_vmux-dpdk-e810_40000kpps_rep?.log \
-  	--5-name "Qemu-vhost (without guest DPDK)" --5 $(DATA_DIR)/mediation_software-tap_*vms_bridge-vhost_40000kpps_rep?.log \
-  	--6-name "Qemu-VirtIO (without DPDK)" --6 $(DATA_DIR)/mediation_software-tap_*vms_bridge_40000kpps_rep?.log \
-  	--7-name "Qemu-e1000(without DPDK)" --7 $(DATA_DIR)/mediation_software-tap_*vms_bridge-e1000_40000kpps_rep?.log \
-  	--8-name "vMux-pt (w/ rte_flow)" --8 $(DATA_DIR)/mediation_hardware_*vms_vmux-pt_40000kpps_rep?.log \
-  	--9-name "vMux-pt" --9 $(DATA_DIR)/mediation_software_*vms_vmux-pt_40000kpps_rep?.log \
-  	--10-name "Qemu-pt (w/ rte_flow)" --10 $(DATA_DIR)/mediation_hardware_*vms_vfio_40000kpps_rep?.log \
-  	--11-name "Qemu-pt" --11 $(DATA_DIR)/mediation_software_*vms_vfio_40000kpps_rep?.log \
+  	--1-name "vMux-med-e810" --1 $(DATA_DIR)/mediation_hardware_*vms_vmux-med_40000kpps_rep?.log \
+  	--2-name 'vMux-med-e810 $$\ast$$ ' --2 $(DATA_DIR)/mediation_software_*vms_vmux-med_40000kpps_rep?.log \
+  	--3-name "vMux-emu-e810" --3 $(DATA_DIR)/mediation_hardware_*vms_vmux-dpdk-e810_40000kpps_rep?.log \
+  	--4-name "vMux-emu-e810 $$\ast$$" --4 $(DATA_DIR)/mediation_software_*vms_vmux-dpdk-e810_40000kpps_rep?.log \
+  	--5-name "Qemu-vhost $$\dag$$" --5 $(DATA_DIR)/mediation_software-tap_*vms_bridge-vhost_40000kpps_rep?.log \
+  	--6-name "Qemu-VirtIO $$\dag$$" --6 $(DATA_DIR)/mediation_software-tap_*vms_bridge_40000kpps_rep?.log \
+  	--7-name "Qemu-e1000 $$\dag$$" --7 $(DATA_DIR)/mediation_software-tap_*vms_bridge-e1000_40000kpps_rep?.log \
+  	--8-name "vMux-pt" --8 $(DATA_DIR)/mediation_hardware_*vms_vmux-pt_40000kpps_rep?.log \
+  	--9-name "vMux-pt $$\ast$$" --9 $(DATA_DIR)/mediation_software_*vms_vmux-pt_40000kpps_rep?.log \
+  	--10-name "Qemu-pt" --10 $(DATA_DIR)/mediation_hardware_*vms_vfio_40000kpps_rep?.log \
+  	--11-name "Qemu-pt $$\ast$$" --11 $(DATA_DIR)/mediation_software_*vms_vfio_40000kpps_rep?.log \
 
 mediation-slow.pdf: $(DATA_FILES) ../plot_mediation.py
 	python3 ../plot_mediation.py -W $(WIDTH) -H 4 \

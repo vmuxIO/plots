@@ -207,6 +207,11 @@ def main():
         elif (i, j, k) == (0, 1, 0):
             barplot_add_hatches(grid.facet_axis(i, j), 1, offset=7)
 
+    def grid_set_titles(grid, titles):
+        for ax, title in zip(grid.axes.flat, titles):
+            ax.set_title(title)
+
+    grid_set_titles(grid, ["Emulation and Mediation", "Passthrough"])
 
     grid.facet_axis(0, 0).annotate(
         "↑ Higher is better", # or ↓
@@ -221,7 +226,7 @@ def main():
 
 
     grid.figure.set_size_inches(args.width, args.height)
-    grid.set_titles("")
+    # grid.set_titles("foobar")
     plt.subplots_adjust(left=0.06)
     # bar = sns.barplot(x='num_vms', y='rxMppsCalc', hue="hue", data=pd.concat(dfs),
     #             palette='colorblind',

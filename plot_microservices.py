@@ -33,6 +33,14 @@ hue_map = {
 YLABEL = 'Latency (P90, ms)'
 XLABEL = 'Offered load (req/s)'
 
+def map_linestyle(hue: str) -> str:
+    if "vMux" in hue:
+        return '-'
+    else:
+        return ':'
+    # linestyles = [ '-', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--']
+
+
 def map_hue(df_hue, hue_map):
     return df_hue.apply(lambda row: hue_map.get(str(row), row))
 
@@ -245,11 +253,7 @@ def main():
 
     linestyles = []
     for hue in df['name'].unique():
-        if "vMux" in hue:
-            linestyles += [ '-' ]
-        else:
-            linestyles += [ ':' ]
-    # linestyles = [ '-', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--']
+        linestyles += [ map_linestyle(hue) ]
 
     # low rpps measurements are broken
     df = df[df.offered_load_rps >= 8 ]
@@ -292,6 +296,9 @@ def main():
                 markersize=6,
                 markeredgewidth=1,
                 linestyles=linestyles,
+                # dont treat data as categorical and use log scale
+                native_scale=True,
+                log_scale=(True, False),
                 )
 
     ax.annotate(

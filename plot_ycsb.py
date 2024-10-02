@@ -34,7 +34,7 @@ hue_map = {
     '2.0_vmux-med_-1.0_overall': 'vmux-med-e810'
 }
 
-YLABEL = 'Per-VM requests (req/s)'
+YLABEL = 'Per-VM load (req/s)'
 XLABEL = 'Nr. of VMs'
 
 def map_hue(df_hue, hue_map):
@@ -250,7 +250,8 @@ def main():
     # legend = plt.legend()
     # legend.get_frame().set_facecolor('white')
     # legend.get_frame().set_alpha(0.8)
-    fig.tight_layout()
+    fig.tight_layout(pad=0.1)
+    # plt.subplots_adjust(bottom=0.28)
     plt.savefig(args.output.name)
     plt.close()
 

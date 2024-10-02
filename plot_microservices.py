@@ -285,7 +285,7 @@ def main():
                 x='offered_load_rps', y='latency_percentile', hue='name',
                 palette='colorblind',
                 # palette='deep',
-                linewidth=2,
+                linewidth=2, # with linewidth 1 and markersize 7, colors are hard to see
                 # kind='point',
                 # capsize=.05,
                 # errorbar='sd',
@@ -346,7 +346,7 @@ def main():
     # legend = plt.legend()
     # legend.get_frame().set_facecolor('white')
     # legend.get_frame().set_alpha(0.8)
-    fig.tight_layout()
+    fig.tight_layout(pad=0.0)
     plt.savefig(args.output.name)
     plt.close()
 

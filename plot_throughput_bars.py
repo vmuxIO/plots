@@ -398,7 +398,8 @@ def main():
     # legend = plt.legend()
     # legend.get_frame().set_facecolor('white')
     # legend.get_frame().set_alpha(0.8)
-    plt.tight_layout()
+    fig.tight_layout(pad=0.0)
+    # plt.subplots_adjust(bottom=0.14, top=0.6)
     plt.savefig(args.output.name)
     plt.close()
 

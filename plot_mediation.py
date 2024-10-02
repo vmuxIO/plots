@@ -213,18 +213,6 @@ def main():
 
     grid_set_titles(grid, ["Emulation and Mediation", "Passthrough"])
 
-    grid.facet_axis(0, 0).annotate(
-        "↑ Higher is better", # or ↓
-        xycoords="axes points",
-        # xy=(0, 0),
-        xy=(0, 0),
-        xytext=(-35, -45),
-        # fontsize=FONT_SIZE,
-        color="navy",
-        weight="bold",
-    )
-
-
     grid.figure.set_size_inches(args.width, args.height)
     # grid.set_titles("foobar")
     plt.subplots_adjust(left=0.06)
@@ -287,7 +275,8 @@ def main():
     # legend.get_frame().set_alpha(0.8)
     # fig.tight_layout(rect = (0, 0, 0, 0.1))
     # ax.set_position((0.1, 0.1, 0.5, 0.8))
-    # fig.tight_layout()
+    plt.tight_layout(pad=0.1)
+    plt.subplots_adjust(right=0.78)
     # fig.tight_layout(rect=(0, 0, 0.3, 1))
     plt.savefig(args.output.name)
     plt.close()

@@ -307,7 +307,7 @@ def main():
 
     legend.get_frame().set_facecolor('white')
     legend.get_frame().set_alpha(0.8)
-    fig.tight_layout()
+    fig.tight_layout(pad=0.0)
     plt.savefig(args.output.name)
     plt.close()
 

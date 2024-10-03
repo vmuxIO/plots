@@ -5,9 +5,6 @@ OUT_DIR := ../out/$(VERSION)/
 DATA_DIR := ../dat/$(VERSION)/
 DATA_FILES = $(wildcard $(DATA_DIR)/*)
 
-DATA_DIR_YCSB := ../dat/vmux0.0.9/
-DATA_FILES_YCSB = $(wildcard ../dat/$(DATA_DIR_YCSB)/*)
-
 PAPER_FIGURES := microbenchmark-cdf.pdf microbenchmark-bars.pdf mediation.pdf microservices.pdf ycsb.pdf
 # PAPER_FIGURES := mediation.pdf microservices.pdf ycsb.pdf
 # PAPER_FIGURES := mediation.pdf iperf.pdf ycsb.pdf
@@ -29,16 +26,16 @@ install:
 	# cp microbenchmark-cdf.pdf $(OVERLEAF)/microbenchmark-cdf.pdf
 	# cp microbenchmark-bars.pdf $(OVERLEAF)/microbenchmark-bars.pdf
 
-ycsb.pdf: $(DATA_FILES_YCSB) ../plot_ycsb.py
+ycsb.pdf: $(DATA_FILES) ../plot_ycsb.py
 	python3 ../plot_ycsb.py -o $(OUT_DIR)/ycsb.pdf \
 		-W $(WIDTH2) -H 2.2 \
-		--1-name "Qemu-pt" --1 $(DATA_DIR_YCSB)/ycsb_*vms_vfio_-1rps_rep*.csv \
-		--2-name "Qemu-e1000" --2 $(DATA_DIR_YCSB)/ycsb_*vms_bridge-e1000_-1rps_rep*.csv \
-		--3-name "Qemu-VirtIO" --3 $(DATA_DIR_YCSB)/ycsb_*vms_bridge_-1rps_rep*.csv \
-		--4-name "Qemu-vhost" --4 $(DATA_DIR_YCSB)/ycsb_*vms_bridge-vhost_-1rps_rep*.csv \
-		--5-name "vMux-emu-e1000" --5 $(DATA_DIR_YCSB)/ycsb_*vms_vmux-emu_-1rps_rep*.csv \
-		--6-name "vMux-emu-e810" --6 $(DATA_DIR_YCSB)/ycsb_*vms_vmux-dpdk-e810_-1rps_rep*.csv \
-		--7-name "vMux-med-e810" --7 $(DATA_DIR_YCSB)/ycsb_*vms_vmux-med_-1rps_rep*.csv \
+		--1-name "Qemu-pt" --1 $(DATA_DIR)/ycsb_*vms_vfio_-1rps_rep*.csv \
+		--2-name "Qemu-e1000" --2 $(DATA_DIR)/ycsb_*vms_bridge-e1000_-1rps_rep*.csv \
+		--3-name "Qemu-VirtIO" --3 $(DATA_DIR)/ycsb_*vms_bridge_-1rps_rep*.csv \
+		--4-name "Qemu-vhost" --4 $(DATA_DIR)/ycsb_*vms_bridge-vhost_-1rps_rep*.csv \
+		--5-name "vMux-emu-e1000" --5 $(DATA_DIR)/ycsb_*vms_vmux-emu_-1rps_rep*.csv \
+		--6-name "vMux-emu-e810" --6 $(DATA_DIR)/ycsb_*vms_vmux-dpdk-e810_-1rps_rep*.csv \
+		--7-name "vMux-med-e810" --7 $(DATA_DIR)/ycsb_*vms_vmux-med_-1rps_rep*.csv \
 
 # vMux emu doesnt work and hence does not appear in the plot
 microservices.pdf: $(DATA_FILES) ../plot_microservices.py

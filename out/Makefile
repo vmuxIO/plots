@@ -13,7 +13,9 @@ PAPER_FIGURES := microbenchmark-cdf.pdf microbenchmark-bars.pdf mediation.pdf mi
 # PAPER_FIGURES := mediation.pdf iperf.pdf ycsb.pdf
 
 WIDTH := 4.4
+WIDTH2 := 5
 DWIDTH := 10
+DWIDTH2 := 11
 
 all: $(PAPER_FIGURES)
 
@@ -29,7 +31,7 @@ install:
 
 ycsb.pdf: $(DATA_FILES_YCSB) ../plot_ycsb.py
 	python3 ../plot_ycsb.py -o $(OUT_DIR)/ycsb.pdf \
-		-W $(WIDTH) -H 2.2 \
+		-W $(WIDTH2) -H 2.2 \
 		--1-name "Qemu-pt" --1 $(DATA_DIR_YCSB)/ycsb_*vms_vfio_-1rps_rep*.csv \
 		--2-name "Qemu-e1000" --2 $(DATA_DIR_YCSB)/ycsb_*vms_bridge-e1000_-1rps_rep*.csv \
 		--3-name "Qemu-VirtIO" --3 $(DATA_DIR_YCSB)/ycsb_*vms_bridge_-1rps_rep*.csv \
@@ -40,7 +42,7 @@ ycsb.pdf: $(DATA_FILES_YCSB) ../plot_ycsb.py
 
 # vMux emu doesnt work and hence does not appear in the plot
 microservices.pdf: $(DATA_FILES) ../plot_microservices.py
-	python3 ../plot_microservices.py -o $(OUT_DIR)/microservices.pdf -W $(DWIDTH) -H 1.8 \
+	python3 ../plot_microservices.py -o $(OUT_DIR)/microservices.pdf -W $(DWIDTH2) -H 1.8 \
   	--1-name "Qemu-VirtIO" --1 $(DATA_DIR)/mediaMicroservices_bridge_33vms_*rps_rep?.log \
   	--2-name "Qemu-vhost" --2 $(DATA_DIR)/mediaMicroservices_bridge-vhost_33vms_*rps_rep?.log \
   	--3-name "Qemu-e1000" --3 $(DATA_DIR)/mediaMicroservices_bridge-e1000_33vms_*rps_rep?.log \

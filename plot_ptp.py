@@ -83,8 +83,11 @@ def plot():
         # file_path = os.path.join(data_dir, data_file)
         print(file_path)
         data = read_data(file_path)
-        means.append(np.abs(np.mean(data)))
-        std_devs.append(np.std(data))
+        mean = np.abs(np.mean(data))
+        means.append(mean)
+        stddev = np.std(data)
+        std_devs.append(stddev)
+        print(f"{i}. {names[i]} - {file_path}: Mean {mean} StdDev {stddev} ({YLABEL})")
         labels.append(names[i])
     
         x = np.arange(len(labels))

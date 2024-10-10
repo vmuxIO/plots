@@ -1,4 +1,4 @@
-VERSION := vmux0.0.10-pre
+VERSION := vmux0.0.10
 OUT_DIR := ../out/$(VERSION)/
 # OUT_DIR := ./
 

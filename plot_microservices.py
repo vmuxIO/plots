@@ -30,8 +30,8 @@ hue_map = {
     '9_vmux-med_software': 'vmux-med (software)',
 }
 
-YLABEL = 'Latency (P90, ms)'
-XLABEL = 'Offered load (req/s)'
+YLABEL = 'Latency (P90, ms) '
+XLABEL = '     Offered load (req/s)'
 
 def map_linestyle(hue: str) -> str:
     if "vMux" in hue:
@@ -328,7 +328,8 @@ def main():
         xycoords="axes points",
         # xy=(0, 0),
         xy=(0, 0),
-        xytext=(-50, -43),
+        xytext=(-75, -33),
+        # xytext=(680, -43),
         # fontsize=FONT_SIZE,
         color="navy",
         weight="bold",
@@ -336,7 +337,8 @@ def main():
 
     grid.figure.set_size_inches(args.width, args.height)
     # grid.set_titles("")
-    plt.subplots_adjust(bottom=0.34, right=0.78)
+    # plt.subplots_adjust(bottom=0.34, right=0.78)
+    plt.subplots_adjust(bottom=0.3)
 
     grid.set_xlabels(XLABEL)
     grid.set_ylabels(YLABEL)

@@ -34,8 +34,8 @@ hue_map = {
     '2.0_vmux-med_-1.0_overall': 'vmux-med-e810'
 }
 
-YLABEL = 'Per-VM load (req/s)'
-XLABEL = 'Nr. of VMs'
+YLABEL = 'Per-VM req/s'
+XLABEL = '        Nr. of VMs'
 
 def map_hue(df_hue, hue_map):
     return df_hue.apply(lambda row: hue_map.get(str(row), row))
@@ -234,7 +234,7 @@ def main():
         xycoords="axes points",
         # xy=(0, 0),
         xy=(0, 0),
-        xytext=(-55, -46),
+        xytext=(-55, -34),
         # fontsize=FONT_SIZE,
         color="navy",
         weight="bold",

@@ -86,6 +86,9 @@ def plot():
     
     width = 0.35
 
+    fig = plt.figure(figsize=(args.width, args.height))
+    ax = fig.add_subplot(1, 1, 1)
+
     # Read data from each file, compute mean and standard deviation
     for i, file_path in enumerate(paths):
         # file_path = os.path.join(data_dir, data_file)
@@ -97,14 +100,11 @@ def plot():
         means.append(mean)
         stddev = np.std(data)
         std_devs.append(stddev)
-        breakpoint()
         print(f"{i}. {names[i]} - {file_path}: Mean {mean} StdDev {stddev} ({YLABEL})")
         labels.append(names[i])
     
         x = np.arange(len(labels))
 
-        fig = plt.figure(figsize=(args.width, args.height))
-        ax = fig.add_subplot(1, 1, 1)
         ax.set_axisbelow(True)
         if args.title:
             plt.title(args.title)
@@ -134,9 +134,9 @@ def plot():
         add_bar_labels(rects1)
         add_bar_labels(rects2)
 
-        plt.tight_layout()
-        plt.savefig("output.png") 
-        plt.show()
+    plt.tight_layout()
+    plt.savefig("output.png")
+    plt.show()
 
 if __name__ == '__main__':
     plot()

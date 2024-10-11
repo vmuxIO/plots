@@ -9,10 +9,10 @@ PAPER_FIGURES := microbenchmark-cdf.pdf microbenchmark-bars.pdf mediation.pdf mi
 # PAPER_FIGURES := mediation.pdf microservices.pdf ycsb.pdf
 # PAPER_FIGURES := mediation.pdf iperf.pdf ycsb.pdf
 
-WIDTH := 4.4
-WIDTH2 := 5
-DWIDTH := 10
-DWIDTH2 := 11
+WIDTH := 5.0
+WIDTH2 := 5.5
+DWIDTH := 11
+DWIDTH2 := 13
 
 all: $(PAPER_FIGURES)
 
@@ -28,7 +28,7 @@ install:
 
 ycsb.pdf: $(DATA_FILES) ../plot_ycsb.py
 	python3 ../plot_ycsb.py -o $(OUT_DIR)/ycsb.pdf \
-		-W $(WIDTH2) -H 2.2 \
+		-W $(WIDTH2) -H 1.7 \
 		--1-name "Qemu-pt" --1 $(DATA_DIR)/ycsb_*vms_vfio_-1rps_rep*.csv \
 		--2-name "Qemu-e1000" --2 $(DATA_DIR)/ycsb_*vms_bridge-e1000_-1rps_rep*.csv \
 		--3-name "Qemu-VirtIO" --3 $(DATA_DIR)/ycsb_*vms_bridge_-1rps_rep*.csv \
@@ -39,7 +39,8 @@ ycsb.pdf: $(DATA_FILES) ../plot_ycsb.py
 
 # vMux emu doesnt work and hence does not appear in the plot
 microservices.pdf: $(DATA_FILES) ../plot_microservices.py
-	python3 ../plot_microservices.py -o $(OUT_DIR)/microservices.pdf -W $(DWIDTH2) -H 1.8 \
+	python3 ../plot_microservices.py -o $(OUT_DIR)/microservices.pdf \
+		-W $(DWIDTH2) -H 1.8 \
   	--1-name "Qemu-VirtIO" --1 $(DATA_DIR)/mediaMicroservices_bridge_33vms_*rps_rep?.log \
   	--2-name "Qemu-vhost" --2 $(DATA_DIR)/mediaMicroservices_bridge-vhost_33vms_*rps_rep?.log \
   	--3-name "Qemu-e1000" --3 $(DATA_DIR)/mediaMicroservices_bridge-e1000_33vms_*rps_rep?.log \
@@ -81,7 +82,7 @@ iperf-udp.pdf: $(DATA_FILES) ../plot_iperf.py
 
 
 mediation.pdf: $(DATA_FILES) ../plot_mediation.py
-	python3 ../plot_mediation.py -W $(DWIDTH) -H 2.5 -l \
+	python3 ../plot_mediation.py -W $(DWIDTH) -H 2.25 -l \
   	-o $(OUT_DIR)/mediation.pdf \
   	--1-name "vMux-med-e810" --1 $(DATA_DIR)/mediation_hardware_*vms_vmux-med_40000kpps_rep?.log \
   	--2-name 'vMux-med-e810 $$\ast$$ ' --2 $(DATA_DIR)/mediation_software_*vms_vmux-med_40000kpps_rep?.log \
@@ -115,7 +116,7 @@ mediation-fast.pdf: $(DATA_FILES) ../plot_mediation.py
   	# --2-name "vMux-med-e810" --2 $(DATA_DIR)/mediation_hardware_*vms_vmux-med_1000kpps_rep?.log \
 
 microbenchmark-cdf.pdf: $(DATA_FILES) ../plot_cdf.py
-	python3 ../plot_cdf.py -W $(WIDTH) -H 2.5 -l \
+	python3 ../plot_cdf.py -W $(WIDTH) -H 2.1 -l \
   	-o $(OUT_DIR)/microbenchmark-cdf.pdf \
   	--1-name "vMux-pt" "l-" "blue" --1 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
   	--2-name "vMux-emu-e1000" "l--" "magenta" --2 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
@@ -153,7 +154,7 @@ me-cdf.pdf: $(DATA_FILES) ../plot_cdf.py
 # --red-name "vfio wtf" --red dat/vfio_vs_vmux2/acc_histogram_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_10000kpps_1020B_30s.csv \
 
 microbenchmark-bars.pdf: $(DATA_FILES) ../plot_throughput_bars.py
-	python3 ../plot_throughput_bars.py -W $(WIDTH) -H 2.8 -l \
+	python3 ../plot_throughput_bars.py -W $(WIDTH) -H 2.4 -l \
   	-o $(OUT_DIR)/microbenchmark-bars.pdf \
   	--1-name "vMux-pt" --1 $(DATA_DIR)/autotest/output_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \
   	--2-name "Qemu-pt" --2 $(DATA_DIR)/autotest/output_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \

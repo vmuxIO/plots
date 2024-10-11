@@ -236,7 +236,7 @@ def main():
     ax.set_axisbelow(True)
     if args.title:
         plt.title(args.title)
-    plt.xlabel('    Latency ($\mu s$)')
+    plt.xlabel('Latency ($\mu s$)')
     plt.ylabel('CDF (%)')
     plt.grid()
 
@@ -290,8 +290,8 @@ def main():
             loc="lower right",
         )
     else:
-        legend = plt.legend(loc="lower right", bbox_to_anchor=(1, 1),
-                            ncol=2, title=None, frameon=False,
+        legend = plt.legend(loc="lower right", bbox_to_anchor=(1.15, 1),
+                            ncol=3, title=None, frameon=False,
                             )
 
     ax.annotate(

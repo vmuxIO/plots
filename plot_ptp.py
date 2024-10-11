@@ -59,6 +59,14 @@ def setup_parser():
     return parser
 
 
+def filter_warmup(data):
+    # We have a warmup phase where the data is not accurate, we can filter this out
+    return data[20:]
+
+def filter_packet_loss_bug(data):
+    # every time we start loosing packets, we first have a huge inaccuracy of a randum but fixed value +n. Once we continue receiveing packets, we have the exactly same spike, but inverted -n.
+    return [x for x in data if np.abs(x) < 20000]
+
 def plot():
     parser = setup_parser()
     args = parser.parse_args()
@@ -83,10 +91,13 @@ def plot():
         # file_path = os.path.join(data_dir, data_file)
         print(file_path)
         data = read_data(file_path)
+        data = filter_warmup(data)
+        data = filter_packet_loss_bug(data)
         mean = np.abs(np.mean(data))
         means.append(mean)
         stddev = np.std(data)
         std_devs.append(stddev)
+        breakpoint()
         print(f"{i}. {names[i]} - {file_path}: Mean {mean} StdDev {stddev} ({YLABEL})")
         labels.append(names[i])
     

@@ -281,6 +281,26 @@ def main():
     plt.savefig(args.output.name)
     plt.close()
 
+    # calulate numbers to include in text
+    print("")
+
+    pt_rteflow = df[(df.interface == 'vfio') & (df.num_vms == 1) & (df.fastclick == 'hardware')].rxMppsCalc.mean()
+    pt_software = df[(df.interface == 'vfio') & (df.num_vms == 1) & (df.fastclick == 'software')].rxMppsCalc.mean()
+    percent = ((pt_rteflow - pt_software) / pt_software) * 100
+    print(f"Rte_flow improves passthrough performance by +{percent:.0f}%.")
+
+    mediation = df[(df.interface == 'vmux-med') & (df.num_vms == 1) & (df.fastclick == 'hardware')].rxMppsCalc.mean()
+    print(f"vMux-med is {mediation:.2f} Mpps.")
+
+    mediation = df[(df.interface == 'vmux-med') & (df.num_vms == 1) & (df.fastclick == 'hardware')].rxMppsCalc.mean()
+    qemu_fastest = df[(df.interface == 'bridge') & (df.num_vms == 1) & (df.fastclick == 'software-tap')].rxMppsCalc.mean()
+    qemu_slowest = df[(df.interface == 'bridge-e1000') & (df.num_vms == 1) & (df.fastclick == 'software-tap')].rxMppsCalc.mean()
+    min_pct = ((mediation - qemu_fastest) / qemu_fastest) * 100
+    max_pct = ((mediation - qemu_slowest) / qemu_slowest) * 100
+    min_x = (mediation / qemu_fastest) - 1.0
+    max_x = (mediation / qemu_slowest) - 1.0
+    print(f"Mediation is +{min_pct:.0f}% to +{max_pct:.0f}% faster than qemu.")
+    print(f"Mediation is {min_x:.1f}x to {max_x:.1f}x faster than qemu.")
 
 if __name__ == '__main__':
     main()

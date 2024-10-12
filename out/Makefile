@@ -26,6 +26,27 @@ install:
 	# cp microbenchmark-cdf.pdf $(OVERLEAF)/microbenchmark-cdf.pdf
 	# cp microbenchmark-bars.pdf $(OVERLEAF)/microbenchmark-bars.pdf
 
+
+ptp:
+	python3 ../plot_ptp.py -o $(OUT_DIR)/ptp.pdf \
+		-W $(WIDTH2) -H 2.2 \
+		--1-name "vMux-med VM1 rep0" --1 $(DATA_DIR)/./ptp_dpdk-guest_vmux-med_rep0.log.vm1.filtered \
+		--2-name "vMux-med VM1 rep1" --2 $(DATA_DIR)/./ptp_dpdk-guest_vmux-med_rep1.log.vm1.filtered \
+		--3-name "vMux-med VM1 rep2" --3 $(DATA_DIR)/./ptp_dpdk-guest_vmux-med_rep2.log.vm1.filtered \
+		--4-name "vMux-med VM2 rep0" --4 $(DATA_DIR)/./ptp_dpdk-guest_vmux-med_rep0.log.vm2.filtered \
+		--5-name "vMux-med VM2 rep1" --5 $(DATA_DIR)/./ptp_dpdk-guest_vmux-med_rep1.log.vm2.filtered \
+		--6-name "vMux-med VM2 rep2" --6 $(DATA_DIR)/./ptp_dpdk-guest_vmux-med_rep2.log.vm2.filtered \
+		--7-name "Qemu-pt" --7 $(DATA_DIR)/./ptp_dpdk-guest_vfio_rep0.log.vm1.filtered \
+		--8-name "Qemu-pt" --8 $(DATA_DIR)/./ptp_dpdk-guest_vfio_rep1.log.vm1.filtered \
+		--9-name "Qemu-pt" --9 $(DATA_DIR)/./ptp_dpdk-guest_vfio_rep2.log.vm1.filtered \
+		--10-name "Native" --10 $(DATA_DIR)/./ptp_dpdk-host_none_rep0.log.filtered \
+		--11-name "Native" --11 $(DATA_DIR)/./ptp_dpdk-host_none_rep1.log.filtered \
+		--12-name "Native" --12 $(DATA_DIR)/./ptp_dpdk-host_none_rep2.log.filtered \
+		--13-name "vMux-emu" --13 $(DATA_DIR)/./ptp_dpdk-guest_vmux-med_rep0.log.vm1.filtered \
+		--14-name "vMux-emu" --14 $(DATA_DIR)/./ptp_dpdk-guest_vmux-med_rep0.log.vm1.filtered \
+		--15-name "vMux-emu" --15 $(DATA_DIR)/./ptp_dpdk-guest_vmux-med_rep0.log.vm1.filtered \
+
+
 ycsb.pdf: $(DATA_FILES) ../plot_ycsb.py
 	python3 ../plot_ycsb.py -o $(OUT_DIR)/ycsb.pdf \
 		-W $(WIDTH2) -H 1.7 \

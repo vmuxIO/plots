@@ -16,7 +16,7 @@ XLABEL = 'Mean and Standarddeviation'
 
 def setup_parser():
 
-    
+
     parser = argparse.ArgumentParser(
         description='PTP Syncing Accuracy Plot'
     )
@@ -72,7 +72,7 @@ def plot():
     args = parser.parse_args()
 
     print(args.__dict__)
-    names = []  
+    names = []
     paths = []
     for color in COLORS:
         if args.__dict__[color]:
@@ -83,11 +83,8 @@ def plot():
     means = []
     std_devs = []
     labels = []
-    
-    width = 0.35
 
-    fig = plt.figure(figsize=(args.width, args.height))
-    ax = fig.add_subplot(1, 1, 1)
+    width = 0.35
 
     # Read data from each file, compute mean and standard deviation
     for i, file_path in enumerate(paths):
@@ -96,43 +93,47 @@ def plot():
         data = read_data(file_path)
         data = filter_warmup(data)
         data = filter_packet_loss_bug(data)
-        mean = np.abs(np.mean(data))
+        # mean = np.abs(np.mean(data))
+        mean = np.mean(np.abs(data))
         means.append(mean)
         stddev = np.std(data)
         std_devs.append(stddev)
         print(f"{i}. {names[i]} - {file_path}: Mean {mean} StdDev {stddev} ({YLABEL})")
         labels.append(names[i])
-    
+
         x = np.arange(len(labels))
 
-        ax.set_axisbelow(True)
-        if args.title:
-            plt.title(args.title)
-        plt.grid()
+    fig = plt.figure(figsize=(args.width, args.height))
+    ax = fig.add_subplot(1, 1, 1)
 
-        fig, ax = plt.subplots(layout='constrained', figsize=(10, 6))
+    ax.set_axisbelow(True)
+    if args.title:
+        plt.title(args.title)
+    plt.grid()
 
-        rects1 = ax.bar(x - width/2, means, width, label='Abs(mean)')
-        rects2 = ax.bar(x + width/2, std_devs, width, label='Stdandard deviation')
+    fig, ax = plt.subplots(layout='constrained', figsize=(10, 6))
 
-        ax.set_ylabel('Nanoseconds')
-        ax.set_title(args.title)
-        ax.set_xticks(x)
-        ax.set_xticklabels(labels)
-        ax.legend(loc='best')
-        ax.set_yscale('log')
+    rects1 = ax.bar(x - width/2, means, width, label='Abs(mean)')
+    rects2 = ax.bar(x + width/2, std_devs, width, label='Stdandard deviation')
 
-        def add_bar_labels(rects):
-            for rect in rects:
-                height = rect.get_height()
-                ax.annotate(f'{height:.2f}',
-                            xy=(rect.get_x() + rect.get_width() / 2, height),
-                            xytext=(0, 3),  # 3 points vertical offset
-                            textcoords="offset points",
-                            ha='center', va='bottom')
+    ax.set_ylabel('Nanoseconds')
+    ax.set_title(args.title)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels)
+    ax.legend(loc='best')
+    ax.set_yscale('log')
 
-        add_bar_labels(rects1)
-        add_bar_labels(rects2)
+    def add_bar_labels(rects):
+        for rect in rects:
+            height = rect.get_height()
+            ax.annotate(f'{height:.2f}',
+                        xy=(rect.get_x() + rect.get_width() / 2, height),
+                        xytext=(0, 3),  # 3 points vertical offset
+                        textcoords="offset points",
+                        ha='center', va='bottom')
+
+    add_bar_labels(rects1)
+    add_bar_labels(rects2)
 
     plt.tight_layout()
     plt.savefig("output.png")

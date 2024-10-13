@@ -42,9 +42,16 @@ ptp:
 		--10-name "Native" --10 $(DATA_DIR)/./ptp_dpdk-host_none_rep0.log.filtered \
 		--11-name "Native" --11 $(DATA_DIR)/./ptp_dpdk-host_none_rep1.log.filtered \
 		--12-name "Native" --12 $(DATA_DIR)/./ptp_dpdk-host_none_rep2.log.filtered \
-		--13-name "vMux-emu" --13 $(DATA_DIR)/./ptp_dpdk-guest_vmux-med_rep0.log.vm1.filtered \
-		--14-name "vMux-emu" --14 $(DATA_DIR)/./ptp_dpdk-guest_vmux-med_rep0.log.vm1.filtered \
-		--15-name "vMux-emu" --15 $(DATA_DIR)/./ptp_dpdk-guest_vmux-med_rep0.log.vm1.filtered \
+		--13-name "vMux-emu" --13 $(DATA_DIR)/./ptp_dpdk-guest_vmux-dpdk-e810_rep0.log.vm1.filtered \
+		--14-name "vMux-emu" --14 $(DATA_DIR)/./ptp_dpdk-guest_vmux-dpdk-e810_rep1.log.vm1.filtered \
+		--15-name "vMux-emu" --15 $(DATA_DIR)/./ptp_dpdk-guest_vmux-dpdk-e810_rep2.log.vm1.filtered \
+		--16-name "vMux-med VM1" --16 $(DATA_DIR)/./ptp_dpdk-guest_vmux-med_rep1.log.vm1.filtered $(DATA_DIR)/./ptp_dpdk-guest_vmux-med_rep1.log.vm2.filtered \
+		--17-name "vMux-med VM2" --17 $(DATA_DIR)/./ptp_dpdk-guest_vmux-med_rep?.log.vm2.filtered \
+		--18-name "Qemu-pt" --18 $(DATA_DIR)/./ptp_dpdk-guest_vfio_rep?.log.vm1.filtered \
+		--19-name "Native" --19 $(DATA_DIR)/./ptp_dpdk-host_none_rep?.log.filtered \
+		--20-name "vMux-emu VM1" --20 $(DATA_DIR)/./ptp_dpdk-guest_vmux-dpdk-e810_rep?.log.vm1.filtered \
+		--21-name "vMux-emu VM2" --21 $(DATA_DIR)/./ptp_dpdk-guest_vmux-dpdk-e810_rep?.log.vm2.filtered \
+		--22-name "vMux-pt" --22 $(DATA_DIR)/./ptp_dpdk-guest_vmux-pt_rep?.log.vm1.filtered \
 
 
 ycsb.pdf: $(DATA_FILES) ../plot_ycsb.py

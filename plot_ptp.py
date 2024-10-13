@@ -5,12 +5,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Function to read data from a file and return it as a list of integers
-def read_data(file_path):
-    with open(file_path, 'r') as file:
-        data = [int(line.strip()) for line in file]
+def read_data(file):
+    data = [int(line.strip()) for line in file]
     return data
 
-COLORS = [ str(i) for i in range(20) ]
+COLORS = [ str(i) for i in range(30) ]
 YLABEL = 'Nanoseconds'
 XLABEL = 'Mean and Standarddeviation'
 
@@ -45,7 +44,8 @@ def setup_parser():
 
     for color in COLORS:
         parser.add_argument(f'--{color}',
-                            type=str,
+                            type=argparse.FileType('r'),
+                            nargs='+',
                             help=f'''Path to PTP output files for
                                   the {color} plot''',
                             )
@@ -77,7 +77,7 @@ def plot():
     for color in COLORS:
         if args.__dict__[color]:
             names += [args.__dict__[f'{color}_name']]
-            paths += [str(args.__dict__[color])]
+            paths += [args.__dict__[color]]
 
     # Initialize lists to store means and standard deviations
     means = []
@@ -87,18 +87,21 @@ def plot():
     width = 0.35
 
     # Read data from each file, compute mean and standard deviation
-    for i, file_path in enumerate(paths):
+    for i, file_paths in enumerate(paths):
         # file_path = os.path.join(data_dir, data_file)
-        print(file_path)
-        data = read_data(file_path)
-        data = filter_warmup(data)
-        data = filter_packet_loss_bug(data)
+        data = []
+        for path in file_paths:
+            data_ = read_data(path)
+            data_ = filter_warmup(data_)
+            data_ = filter_packet_loss_bug(data_)
+            data += data_
+
         # mean = np.abs(np.mean(data))
         mean = np.mean(np.abs(data))
         means.append(mean)
         stddev = np.std(data)
         std_devs.append(stddev)
-        print(f"{i}. {names[i]} - {file_path}: Mean {mean} StdDev {stddev} ({YLABEL})")
+        print(f"{i}. {names[i]}: Mean {mean} StdDev {stddev} ({YLABEL})")
         labels.append(names[i])
 
         x = np.arange(len(labels))
@@ -137,7 +140,21 @@ def plot():
 
     plt.tight_layout()
     plt.savefig("output.png")
+
+    # print some data
+    def compare(i, j):
+        old = np.mean([ means[n] for n in i ])
+        new = np.mean([ means[n] for n in j ])
+        comp_x = old/new
+        comp_perc = (old-new)/new* 100
+        print(f"{labels[i[0]]} vs {labels[j[0]]}: {comp_x:.1f}x, {comp_perc:.0f}%")
+    compare([19, 20], [15, 16])
+    compare([17], [15, 16])
+
+
+    # show plot
     plt.show()
+
 
 if __name__ == '__main__':
     plot()

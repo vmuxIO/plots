@@ -403,6 +403,30 @@ def main():
     plt.savefig(args.output.name)
     plt.close()
 
+    # print stats
+    print("Throughput at 1% packet loss")
+    vmux_med = df[(df.Group == 'vMux-med-e810') & (df.Category == '1')].Values.mean()
+    qemu_vhost = df[(df.Group == 'Qemu-vhost') & (df.Category == '1')].Values.mean()
+    qemu_virtio = df[(df.Group == 'Qemu-VirtIO') & (df.Category == '1')].Values.mean()
+    qemu_e1000 = df[(df.Group == 'Qemu-e1000') & (df.Category == '1')].Values.mean()
+    a = vmux_med / qemu_e1000
+    b = qemu_vhost / vmux_med
+    c = qemu_virtio / vmux_med
+    print(f"vMux-med-e810 is faster than Qemu-e1000: {a:.1f}x")
+    print(f"vMux-med-e810 is slower than Qemu-vhost: {b:.1f}x")
+    print(f"vMux-med-e810 is slower than Qemu-virtio: {c:.1f}x")
+
+    print("Throughput at any packet loss")
+    vmux_med = df[(df.Group == 'vMux-med-e810') & (df.Category == 'any')].Values.mean()
+    qemu_vhost = df[(df.Group == 'Qemu-vhost') & (df.Category == 'any')].Values.mean()
+    qemu_virtio = df[(df.Group == 'Qemu-VirtIO') & (df.Category == 'any')].Values.mean()
+    qemu_e1000 = df[(df.Group == 'Qemu-e1000') & (df.Category == 'any')].Values.mean()
+    a = vmux_med / qemu_e1000
+    b = qemu_vhost / vmux_med
+    c = qemu_virtio / vmux_med
+    print(f"vMux-med-e810 is faster than Qemu-e1000: {a:.1f}x")
+    print(f"vMux-med-e810 is slower than Qemu-vhost: {b:.1f}x")
+    print(f"vMux-med-e810 is slower than Qemu-virtio: {c:.1f}x")
 
 if __name__ == '__main__':
     main()

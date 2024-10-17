@@ -243,6 +243,7 @@ def main():
     plt.xlabel(XLABEL)
     plt.ylabel(YLABEL)
     plt.ylim(bottom=0)
+    plt.xlim(right=110)
     # for container in ax.containers:
     #     ax.bar_label(container, fmt='%.0f')
     sns.despine()

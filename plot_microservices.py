@@ -277,7 +277,7 @@ def main():
         elif "hotel" in ax.get_title():
             ax.set_ylim(9, 21)
         elif "social" in ax.get_title():
-            ax.set_ylim(2, 9)
+            ax.set_ylim(3, 10)
 
     grid.map_dataframe(pointplot_with_ylim,
     # grid.map_dataframe(sns.pointplot,

@@ -151,7 +151,7 @@ microbenchmark-cdf.pdf: $(DATA_FILES) ../plot_cdf.py
   	--3-name "vMux-emu-e810" "l--" "orange" --3 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
   	--4-name "vMux-med-e810" "l-" "brown" --4 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
   	--5-name "Qemu-pt" "l-." "red" --5 $(DATA_DIR)/autotest/acc_histogram_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
-  	--6-name "Qemu-vhost" "l:" "green" --6 ../dat/gr/virtio/acc_histogram_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--6-name "Qemu-vhost" "l:" "green" --6 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_10kpps_60B_*s.csv \
   	--7-name "Qemu-VirtIO" "l:" "cyan" --7 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
   	--8-name "Qemu-e1000" "l:" "violet" --8 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge-e1000_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
 

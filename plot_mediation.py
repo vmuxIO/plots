@@ -244,7 +244,7 @@ def main():
     grid.set_ylabels(YLABEL)
 
     grid.facet_axis(0, 0).annotate(
-        "↓ Lower is better", # or ↓ ← ↑ →
+        "↑ Higher is better", # or ↓ ← ↑ →
         xycoords="axes points",
         # xy=(0, 0),
         xy=(0, 0),

@@ -72,6 +72,10 @@ def setup_parser():
                         action='store_true',
                         help='Plot logarithmic latency axis',
                         )
+    parser.add_argument('-s', '--slides',
+                        action='store_true',
+                        help='Use other setting to plot for presentation slides',
+                        )
     for color in COLORS:
         parser.add_argument(f'--{color}',
                             type=argparse.FileType('r'),
@@ -205,7 +209,7 @@ def main():
         if (i, j, k) == (0, 0, 0):
             barplot_add_hatches(grid.facet_axis(i, j), 7)
         elif (i, j, k) == (0, 1, 0):
-            barplot_add_hatches(grid.facet_axis(i, j), 1, offset=7)
+            barplot_add_hatches(grid.facet_axis(i, j), 1, offset=(7 if not args.slides else 4))
 
     def grid_set_titles(grid, titles):
         for ax, title in zip(grid.axes.flat, titles):
@@ -301,6 +305,13 @@ def main():
     max_x = (mediation / qemu_slowest) - 1.0
     print(f"Mediation is +{min_pct:.0f}% to +{max_pct:.0f}% faster than qemu.")
     print(f"Mediation is {min_x:.1f}x to {max_x:.1f}x faster than qemu.")
+
+    mediation = df[(df.interface == 'vmux-med') & (df.num_vms == 1) & (df.fastclick == 'hardware')].rxMppsCalc.mean()
+    emulation = df[(df.interface == 'vmux-dpdk-e810') & (df.num_vms == 1) & (df.fastclick == 'hardware')].rxMppsCalc.mean()
+    percent = ((emulation - mediation) / mediation) * 100
+    print(f"Emulation of rte_flow is {-1*percent:.0f}% slower than mediation.")
+
+
 
 if __name__ == '__main__':
     main()

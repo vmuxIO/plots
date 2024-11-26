@@ -302,6 +302,10 @@ def setup_parser():
                         action='store_true',
                         help='Plot logarithmic latency axis',
                         )
+    parser.add_argument('-s', '--slides',
+                        action='store_true',
+                        help='Use other setting to plot for presentation slides',
+                        )
     for color in COLORS:
         parser.add_argument(f'--{color}',
                             type=argparse.FileType('r'),
@@ -358,7 +362,7 @@ def main():
     bar = sns.barplot(x='Category', y='Values', hue='Group', data=df, palette='pastel', edgecolor='dimgray')
     sns.move_legend(
         ax, "lower center",
-        bbox_to_anchor=(.5, 1), ncol=3, title=None, frameon=False,
+        bbox_to_anchor=(.5, 1), ncol=(3 if not args.slides else 2), title=None, frameon=False,
         borderaxespad=2.5, # put some space between the legend and the plot
     )
 

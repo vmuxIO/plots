@@ -218,6 +218,7 @@ microbenchmark-bars.pdf: $(DATA_FILES) ../plot_throughput_bars.py
    	--6-name "vMux-emu-e1000" --6 $(DATA_DIR)/autotest/output_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
    	--7-name "vMux-emu-e810" --7 $(DATA_DIR)/autotest/output_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
    	--8-name "vMux-med-e810" --8 $(DATA_DIR)/autotest/output_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
+   	--9-name "vMux-vDPDK" --9 $(DATA_DIR)/autotest/output_pcvm_vmux-vdpdk_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \
 
 slides-microbenchmark-bars.pdf: $(DATA_FILES) ../plot_throughput_bars.py
 	python3 ../plot_throughput_bars.py -W $(WIDTH) -H 2.4 -l \

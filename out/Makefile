@@ -139,6 +139,27 @@ mediation.pdf: $(DATA_FILES) ../plot_mediation.py
   	--12-name "vMux-vDPDK" --12 $(DATA_DIR)/mediation_hardware_*vms_vmux-vdpdk_40000kpps_rep?.log \
   	--13-name "vMux-vDPDK $$\ast$$" --13 $(DATA_DIR)/mediation_software_*vms_vmux-vdpdk_40000kpps_rep?.log \
 
+mediation1.pdf: $(DATA_FILES) ../plot_mediation.py
+	python3 ../plot_mediation.py -W $(WIDTH) -H 3 -l \
+  	-o $(OUT_DIR)/mediation1.pdf \
+  	--1-name "vMux-med-e810" --1 $(DATA_DIR)/mediation_hardware_*vms_vmux-med_40000kpps_rep?.log \
+  	--2-name 'vMux-med-e810 $$\ast$$ ' --2 $(DATA_DIR)/mediation_software_*vms_vmux-med_40000kpps_rep?.log \
+  	--3-name "vMux-emu-e810" --3 $(DATA_DIR)/mediation_hardware_*vms_vmux-dpdk-e810_40000kpps_rep?.log \
+  	--4-name "vMux-emu-e810 $$\ast$$" --4 $(DATA_DIR)/mediation_software_*vms_vmux-dpdk-e810_40000kpps_rep?.log \
+  	--5-name "Qemu-vhost $$\dag$$" --5 $(DATA_DIR)/mediation_software-tap_*vms_bridge-vhost_40000kpps_rep?.log \
+  	--6-name "Qemu-VirtIO $$\dag$$" --6 $(DATA_DIR)/mediation_software-tap_*vms_bridge_40000kpps_rep?.log \
+  	--7-name "Qemu-e1000 $$\dag$$" --7 $(DATA_DIR)/mediation_software-tap_*vms_bridge-e1000_40000kpps_rep?.log \
+
+mediation2.pdf: $(DATA_FILES) ../plot_mediation.py
+	python3 ../plot_mediation.py -W $(WIDTH) -H 2.25 -l \
+  	-o $(OUT_DIR)/mediation2.pdf \
+  	--8-name "vMux-pt" --8 $(DATA_DIR)/mediation_hardware_*vms_vmux-pt_40000kpps_rep?.log \
+  	--9-name "vMux-pt $$\ast$$" --9 $(DATA_DIR)/mediation_software_*vms_vmux-pt_40000kpps_rep?.log \
+  	--10-name "Qemu-pt" --10 $(DATA_DIR)/mediation_hardware_*vms_vfio_40000kpps_rep?.log \
+  	--11-name "Qemu-pt $$\ast$$" --11 $(DATA_DIR)/mediation_software_*vms_vfio_40000kpps_rep?.log \
+  	--12-name "vMux-vDPDK" --12 $(DATA_DIR)/mediation_hardware_*vms_vmux-vdpdk_40000kpps_rep?.log \
+  	--13-name "vMux-vDPDK $$\ast$$" --13 $(DATA_DIR)/mediation_software_*vms_vmux-vdpdk_40000kpps_rep?.log \
+
 slides-mediation.pdf: $(DATA_FILES) ../plot_mediation.py
 	python3 ../plot_mediation.py -W $(DWIDTH) -H 3 -l \
   	-o $(OUT_DIR)/slides-mediation.pdf \

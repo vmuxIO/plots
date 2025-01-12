@@ -151,7 +151,14 @@ def main():
     summary = df.groupby(hue)['rxMppsCalc'].describe()
     df_hue = df.apply(lambda row: '_'.join(str(row[col]) for col in ['repetitions', 'interface', 'fastclick', 'rate']), axis=1)
     df_hue = map_hue(df_hue, hue_map)
-    df['is_passthrough'] = df.apply(lambda row: True if "vmux-pt" in row['interface'] or "vfio" in row['interface'] else False, axis=1)
+    def get_horizontal(row) -> str:
+        if "vmux-pt" in row['interface'] or "vfio" in row['interface']:
+            return "2_passthrough"
+        elif "vmux-vdpdk" in row['interface']:
+            return "1_para_virt"
+        else:
+            return "0_emu_or_med"
+    df['horizontal'] = df.apply(lambda row: get_horizontal(row), axis=1)
 
     # map colors to hues
     colors = sns.color_palette("pastel", len(df['hue'].unique())-1) + [ mcolors.to_rgb('sandybrown') ]
@@ -159,10 +166,10 @@ def main():
 
     # Plot using Seaborn
     grid = sns.FacetGrid(df,
-            col='is_passthrough',
+            col='horizontal',
             sharey = False,
             sharex = False,
-            gridspec_kws={"width_ratios": [11, 1]},
+            gridspec_kws={"width_ratios": [11, 1, 3]},
     )
     grid.map_dataframe(sns.barplot,
     # grid.map_dataframe(barplot_with_hatches,
@@ -175,8 +182,8 @@ def main():
 
     grid.add_legend(
             # bbox_to_anchor=(0.5, 0.77),
-            loc='right',
-            ncol=1, title=None, frameon=False,
+            loc='upper center',
+            ncol=6, title=None, frameon=False,
                     )
 
     # Fix the legend hatches
@@ -210,12 +217,14 @@ def main():
             barplot_add_hatches(grid.facet_axis(i, j), 7)
         elif (i, j, k) == (0, 1, 0):
             barplot_add_hatches(grid.facet_axis(i, j), 1, offset=(7 if not args.slides else 4))
+        elif (i, j, k) == (0, 2, 0):
+            barplot_add_hatches(grid.facet_axis(i, j), 7, offset=(11 if not args.slides else 4))
 
     def grid_set_titles(grid, titles):
         for ax, title in zip(grid.axes.flat, titles):
             ax.set_title(title)
 
-    grid_set_titles(grid, ["Emulation and Mediation", "Passthrough"])
+    grid_set_titles(grid, ["Emulation and Mediation", "Passthrough", "vMux-vDPDK"])
 
     grid.figure.set_size_inches(args.width, args.height)
     # grid.set_titles("foobar")
@@ -281,7 +290,8 @@ def main():
     # fig.tight_layout(rect = (0, 0, 0, 0.1))
     # ax.set_position((0.1, 0.1, 0.5, 0.8))
     plt.tight_layout(pad=0.1)
-    plt.subplots_adjust(right=0.78)
+    # plt.subplots_adjust(right=0.78)
+    plt.subplots_adjust(top=0.65)
     # fig.tight_layout(rect=(0, 0, 0.3, 1))
     plt.savefig(args.output.name)
     plt.close()

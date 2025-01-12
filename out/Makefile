@@ -136,6 +136,8 @@ mediation.pdf: $(DATA_FILES) ../plot_mediation.py
   	--9-name "vMux-pt $$\ast$$" --9 $(DATA_DIR)/mediation_software_*vms_vmux-pt_40000kpps_rep?.log \
   	--10-name "Qemu-pt" --10 $(DATA_DIR)/mediation_hardware_*vms_vfio_40000kpps_rep?.log \
   	--11-name "Qemu-pt $$\ast$$" --11 $(DATA_DIR)/mediation_software_*vms_vfio_40000kpps_rep?.log \
+  	--12-name "vMux-vDPDK" --12 $(DATA_DIR)/mediation_hardware_*vms_vmux-vdpdk_40000kpps_rep?.log \
+  	--13-name "vMux-vDPDK $$\ast$$" --13 $(DATA_DIR)/mediation_software_*vms_vmux-vdpdk_40000kpps_rep?.log \
 
 slides-mediation.pdf: $(DATA_FILES) ../plot_mediation.py
 	python3 ../plot_mediation.py -W $(DWIDTH) -H 3 -l \
@@ -173,13 +175,14 @@ microbenchmark-cdf.pdf: $(DATA_FILES) ../plot_cdf.py
 	python3 ../plot_cdf.py -W $(WIDTH) -H 2.1 -l \
   	-o $(OUT_DIR)/microbenchmark-cdf.pdf \
   	--1-name "vMux-pt" "l-" "blue" --1 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
-  	--2-name "vMux-emu-e1000" "l--" "magenta" --2 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--3-name "vMux-emu-e810" "l--" "orange" --3 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--4-name "vMux-med-e810" "l-" "brown" --4 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--5-name "Qemu-pt" "l-." "red" --5 $(DATA_DIR)/autotest/acc_histogram_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
-  	--6-name "Qemu-vhost" "l:" "green" --6 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--7-name "Qemu-VirtIO" "l:" "cyan" --7 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
-  	--8-name "Qemu-e1000" "l:" "violet" --8 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge-e1000_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--2-name "vMux-vDPDK" "l--" "purple" --2 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-vdpdk_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
+  	--3-name "vMux-emu-e1000" "l--" "magenta" --3 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--4-name "vMux-emu-e810" "l--" "orange" --4 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--5-name "vMux-med-e810" "l-" "brown" --5 $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--6-name "Qemu-pt" "l-." "red" --6 $(DATA_DIR)/autotest/acc_histogram_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_10kpps_60B_*s.csv \
+  	--7-name "Qemu-vhost" "l:" "green" --7 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--8-name "Qemu-VirtIO" "l:" "cyan" --8 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
+  	--9-name "Qemu-e1000" "l:" "violet" --9 $(DATA_DIR)/autotest/acc_histogram_pcvm_bridge-e1000_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv \
 
 #  	--m-name "vMux-emu-e810 10kpps" --m $(DATA_DIR)/autotest/acc_histogram_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_10kpps_60B_*s.csv
 #  	--m-name "vMux-spacing" --m ../dat/vmux-spacing/acc_histogram_pcvm_vmux-emu_normal_vhostoff_ioregionfdoff_xdp_1000kpps_60B_*s.csv

@@ -220,6 +220,7 @@ def main():
     grid.figure.set_size_inches(args.width, args.height)
     # grid.set_titles("foobar")
     plt.subplots_adjust(left=0.06)
+    # grid.axes[0, 0].set_yscale('log')
     # bar = sns.barplot(x='num_vms', y='rxMppsCalc', hue="hue", data=pd.concat(dfs),
     #             palette='colorblind',
     #             edgecolor='dimgray',

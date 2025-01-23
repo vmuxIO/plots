@@ -56,7 +56,7 @@ ptp:
 
 ycsb.pdf: $(DATA_FILES) ../plot_ycsb.py
 	python3 ../plot_ycsb.py -o $(OUT_DIR)/ycsb.pdf \
-		-W $(WIDTH2) -H 1.7 \
+		-W $(WIDTH2) -H 1.9 \
 		--1-name "Qemu-pt" --1 $(DATA_DIR)/ycsb_*vms_vfio_-1rps_rep*.csv \
 		--2-name "Qemu-e1000" --2 $(DATA_DIR)/ycsb_*vms_bridge-e1000_-1rps_rep*.csv \
 		--3-name "Qemu-VirtIO" --3 $(DATA_DIR)/ycsb_*vms_bridge_-1rps_rep*.csv \
@@ -64,6 +64,7 @@ ycsb.pdf: $(DATA_FILES) ../plot_ycsb.py
 		--5-name "vMux-emu-e1000" --5 $(DATA_DIR)/ycsb_*vms_vmux-emu_-1rps_rep*.csv \
 		--6-name "vMux-emu-e810" --6 $(DATA_DIR)/ycsb_*vms_vmux-dpdk-e810_-1rps_rep*.csv \
 		--7-name "vMux-med-e810" --7 $(DATA_DIR)/ycsb_*vms_vmux-med_-1rps_rep*.csv \
+		--8-name "vMux-vDPDK" --8 $(DATA_DIR)/ycsb_*vms_vmux-vdpdk_-1rps_rep*.csv \
 
 # vMux emu doesnt work and hence does not appear in the plot
 microservices.pdf: $(DATA_FILES) ../plot_microservices.py
@@ -87,6 +88,9 @@ microservices.pdf: $(DATA_FILES) ../plot_microservices.py
   	--16-name "vMux-emu-e1000" --16 $(DATA_DIR)/socialNetwork_vmux-emu_27vms_*rps_rep?.log \
   	--17-name "vMux-emu-e810" --17 $(DATA_DIR)/socialNetwork_vmux-dpdk-e810_27vms_*rps_rep?.log \
   	--18-name "vMux-med-e810" --18 $(DATA_DIR)/socialNetwork_vmux-med_27vms_*rps_rep?.log \
+  	--19-name "vMux-vDPDK" --19 $(DATA_DIR)/mediaMicroservices_vmux-vdpdk_33vms_*rps_rep?.log \
+  	--20-name "vMux-vDPDK" --20 $(DATA_DIR)/hotelReservation_vmux-vdpdk_19vms_*rps_rep?.log \
+  	--21-name "vMux-vDPDK" --21 $(DATA_DIR)/socialNetwork_vmux-vdpdk_27vms_*rps_rep?.log \
 
 slides-microservices.pdf: $(DATA_FILES) ../plot_microservices.py
 	python3 ../plot_microservices.py -o $(OUT_DIR)/slides-microservices.pdf \
@@ -172,6 +176,8 @@ slides-mediation.pdf: $(DATA_FILES) ../plot_mediation.py
   	--9-name "vMux passthrough $$\ast$$" --9 $(DATA_DIR)/mediation_software_*vms_vmux-pt_40000kpps_rep?.log \
   	--10-name "Qemu passthrough" --10 $(DATA_DIR)/mediation_hardware_*vms_vfio_40000kpps_rep?.log \
   	--11-name "Qemu passthrough $$\ast$$" --11 $(DATA_DIR)/mediation_software_*vms_vfio_40000kpps_rep?.log \
+  	--12-name "vMux-vDPDK" --12 $(DATA_DIR)/mediation_hardware_*vms_vmux-vdpdk_40000kpps_rep?.log \
+  	--13-name "vMux-vDPDK $$\ast$$" --13 $(DATA_DIR)/mediation_software_*vms_vmux-vdpdk_40000kpps_rep?.log \
 
 mediation-slow.pdf: $(DATA_FILES) ../plot_mediation.py
 	python3 ../plot_mediation.py -W $(WIDTH) -H 4 \
@@ -246,13 +252,14 @@ microbenchmark-bars.pdf: $(DATA_FILES) ../plot_throughput_bars.py
 
 slides-microbenchmark-bars.pdf: $(DATA_FILES) ../plot_throughput_bars.py
 	python3 ../plot_throughput_bars.py -W $(WIDTH) -H 2.4 -l \
-		-s \
-  	-o $(OUT_DIR)/slides-microbenchmark-bars.pdf \
-  	--1-name "vMux passthrough" --1 $(DATA_DIR)/autotest/output_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \
-  	--2-name "Qemu passthrough" --2 $(DATA_DIR)/autotest/output_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \
-   	--5-name "Qemu emulation" --5 $(DATA_DIR)/autotest/output_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
-   	--7-name "vMux emulation" --7 $(DATA_DIR)/autotest/output_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
-   	--8-name "vMux mediation" --8 $(DATA_DIR)/autotest/output_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
+    -s \
+    -o $(OUT_DIR)/slides-microbenchmark-bars.pdf \
+    --1-name "vMux passthrough" --1 $(DATA_DIR)/autotest/output_pcvm_vmux-pt_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \
+    --2-name "Qemu passthrough" --2 $(DATA_DIR)/autotest/output_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \
+    --5-name "Qemu emulation" --5 $(DATA_DIR)/autotest/output_pcvm_bridge_normal_vhoston_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
+    --7-name "vMux emulation" --7 $(DATA_DIR)/autotest/output_pcvm_vmux-dpdk-e810_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
+    --8-name "vMux mediation" --8 $(DATA_DIR)/autotest/output_pcvm_vmux-med_normal_vhostoff_ioregionfdoff_xdp_*kpps_60B_*s_rep*.log \
+    --9-name "vMux-vDPDK" --9 $(DATA_DIR)/autotest/output_pcvm_vmux-vdpdk_normal_vhostoff_ioregionfdoff_moongen_*kpps_60B_*s_rep*.log \
 
 # # this (big packets) is boring
 # python3 ../plot_throughput_bars.py -W 3.3 -H 2 -l \

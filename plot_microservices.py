@@ -11,7 +11,7 @@ from typing import List
 from dataclasses import dataclass
 
 
-COLORS = [ str(i) for i in range(20) ]
+COLORS = [ str(i) for i in range(25) ]
 # COLORS = mcolors.CSS4_COLORS.keys()
 # COLORS = [
 #     'blue',
@@ -30,7 +30,7 @@ hue_map = {
     '9_vmux-med_software': 'vmux-med (software)',
 }
 
-YLABEL = 'Latency (P90, ms) '
+YLABEL = 'Latency (ms) '
 XLABEL = '     Offered load (req/s)'
 
 def map_linestyle(hue: str) -> str:
@@ -166,7 +166,7 @@ class MicroserviceTest:
                 percentiles = pd.DataFrame(spectrum_lines, columns=["Value", "Percentile", "TotalCount", "1/(1-Percentile)"]).astype(float)
                 # is already in ms
                 # percentile = percentiles[percentiles.Percentile == 0.5].Value.values[0]
-                percentile = percentiles[percentiles.Percentile == 0.9].Value.values[0]
+                percentile = percentiles[percentiles.Percentile == 0.5].Value.values[0]
                 # percentile = percentiles[percentiles.Percentile == 0.996094].Value.values[0]
 
 
@@ -273,11 +273,11 @@ def main():
 
         # Set different y-limits for different conditions
         if "media" in ax.get_title():
-            ax.set_ylim(0, 65)
+            ax.set_ylim(5, 47)
         elif "hotel" in ax.get_title():
-            ax.set_ylim(9, 21)
+            ax.set_ylim(2, 9)
         elif "social" in ax.get_title():
-            ax.set_ylim(3, 10)
+            ax.set_ylim(0, 10)
 
     grid.map_dataframe(pointplot_with_ylim,
     # grid.map_dataframe(sns.pointplot,

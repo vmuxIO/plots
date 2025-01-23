@@ -169,7 +169,9 @@ def main():
             col='horizontal',
             sharey = False,
             sharex = False,
-            gridspec_kws={"width_ratios": [11, 1, 3]},
+            gridspec_kws={"width_ratios":
+                          [11, 1, 3] if not args.slides else [ 35, 5, 16]
+                          },
     )
     grid.map_dataframe(sns.barplot,
     # grid.map_dataframe(barplot_with_hatches,
@@ -183,7 +185,8 @@ def main():
     grid.add_legend(
             # bbox_to_anchor=(0.5, 0.77),
             loc='upper center',
-            ncol=6, title=None, frameon=False,
+            ncol=6 if not args.slides else 5,
+            title=None, frameon=False,
                     )
 
     # Fix the legend hatches
@@ -218,7 +221,7 @@ def main():
         elif (i, j, k) == (0, 1, 0):
             barplot_add_hatches(grid.facet_axis(i, j), 1, offset=(7 if not args.slides else 4))
         elif (i, j, k) == (0, 2, 0):
-            barplot_add_hatches(grid.facet_axis(i, j), 7, offset=(11 if not args.slides else 4))
+            barplot_add_hatches(grid.facet_axis(i, j), 7, offset=(11 if not args.slides else 8))
 
     def grid_set_titles(grid, titles):
         for ax, title in zip(grid.axes.flat, titles):
@@ -292,6 +295,7 @@ def main():
     plt.tight_layout(pad=0.1)
     # plt.subplots_adjust(right=0.78)
     plt.subplots_adjust(top=0.65)
+    plt.subplots_adjust(left=0.06)
     # fig.tight_layout(rect=(0, 0, 0.3, 1))
     plt.savefig(args.output.name)
     plt.close()

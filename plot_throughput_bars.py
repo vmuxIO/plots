@@ -49,10 +49,10 @@ def find_x_intersections(x, y, y_target):
 
     return x_intersections
 
-def find_x_intersection(x, y, y_target):
+def find_x_intersection(x, y, y_target, context: str = "-"):
     x_intersections = find_x_intersections(np.array(x), np.array(y), y_target)
     if len(x_intersections) != 1:
-        print(f'WARN: Invalid number of intersections at x={x_intersections}')
+        print(f'WARN: Invalid number of intersections at x={x_intersections} ({context})')
     if len(x_intersections) == 0:
         # assuming that the function is monotonically increasing:
         if y_target < y[0]:
@@ -239,7 +239,13 @@ class ThroughputDatapoint(object):
         self.y_max_err = yerr[position]
 
         # find throughput at n% packet loss
-        x_tpl = find_x_intersection(x, y_loss, TARGET_PACKET_LOSS)
+        context=f"{self._moongen_logs[0]._filepath} etc..."
+        context += "\n  offered loads:  " + str(["{:.0f}".format(f) for f in x])
+        context += "\n  packet loss %: " + str(["{:.0f}".format(f) for f in y_loss])
+        context += f"\n  packet loss target with which we search intersections: {TARGET_PACKET_LOSS}"
+        # context=str(self._name))
+        # context=str([log._filepath for log in self._moongen_logs]))
+        x_tpl = find_x_intersection(x, y_loss, TARGET_PACKET_LOSS, context=context)
         self.y_tpl = np.interp(x_tpl, x, y) # throughput at target packet loss
         self.y_tpl_err = np.interp(x_tpl, x, yerr) # throughput at target packet loss
 

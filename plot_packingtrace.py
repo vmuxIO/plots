@@ -72,12 +72,24 @@ class Scheduler():
     machine_types: Dict[int, List[Machine]] = dict()
     vmId_to_machine: Dict[int, Tuple[int, int]] = dict() # vmId -> (machine_type, machine_idx)
 
+    fragmented: bool
+
+    def __init__(self, fragmented: bool = False):
+        self.fragmented = fragmented
+        self.machine_types = dict()
+        self.vmId_to_machine = dict()
+
+
     def schedule(self, vm_request: pd.Series):
         vm_type = vm_request["vmTypeId"]
         machine_type_candidates = vm_types[vm_types["vmTypeId"] == vm_type]
 
         # TODO select optimal candidate
-        optimal_type = machine_type_candidates.iloc[0]
+        if self.fragmented:
+            pool_fragment = int(vm_request["vmId"]) % 3
+            optimal_type = machine_type_candidates.iloc[pool_fragment % len(machine_type_candidates)]
+        else:
+            optimal_type = machine_type_candidates.iloc[0]
 
         # bookkeeping
         self.machine_types[optimal_type["machineId"]] = self.machine_types.get(optimal_type["machineId"], [])
@@ -127,49 +139,58 @@ class Scheduler():
                 print(f" - Machine type {machineId}:")
                 print(f"   {len(machine.vms)} VMs, core={machine.core}, memory={machine.memory}, hdd={machine.hdd}, ssd={machine.ssd}, nic={machine.nic}")
 
+    def simulate(self):
+        time = None
+        time_series_time = []
+        time_series_pool_size = []
 
+        for index, row in tqdm(vm_requests.iterrows(), total=len(vm_requests)):
+            if row["starttime"] == row["time_sorter"]:
+                scheduler.schedule(row)
+            elif row["endtime"] == row["time_sorter"]:
+                scheduler.unschedule(row)
+            else:
+                assert False
+
+            if row["time_sorter"] is None:
+                continue
+            if time is None:
+                time = row["time_sorter"]
+                continue
+            if row["time_sorter"] > time:
+                time = row["time_sorter"]
+                time_series_time += [time]
+                time_series_pool_size += [scheduler.pool_size()]
+
+        df = pd.DataFrame({
+            "time": time_series_time,
+            "pool_size": time_series_pool_size
+        })
+        return df
+
+log("Simulating unified")
 scheduler = Scheduler()
-time = None
-time_series_time = []
-time_series_pool_size = []
+unified = scheduler.simulate()
+unified["pools"] = "unified"
+log(unified["pool_size"].describe())
 
-for index, row in tqdm(vm_requests.iterrows(), total=len(vm_requests)):
-    if row["starttime"] == row["time_sorter"]:
-        scheduler.schedule(row)
-    elif row["endtime"] == row["time_sorter"]:
-        scheduler.unschedule(row)
-    else:
-        assert False
+log("Simulating fragmented")
+scheduler = Scheduler(fragmented=True)
+fragmented = scheduler.simulate()
+fragmented["pools"] = "fragmented"
+log(fragmented["pool_size"].describe())
 
-    if row["time_sorter"] is None:
-        continue
-    if time is None:
-        time = row["time_sorter"]
-        continue
-    if row["time_sorter"] > time:
-        time = row["time_sorter"]
-        time_series_time += [time]
-        time_series_pool_size += [scheduler.pool_size()]
+df = pd.concat([unified, fragmented])
 
-
-
-
-breakpoint()
-
-df = pd.DataFrame({
-    "time": time_series_time,
-    "pool_size": time_series_pool_size
-})
 
 sns.lineplot(
     data=df,
     x="time",
     y="pool_size",
-    # hue="vmTypeId",
-    # style="vmTypeId",
+    hue="pools",
+    style="pools",
     # label=f'{self._name}',
     # color=self._line_color,
     # linestyle=self._line,
 )
-plt.show()
-breakpoint()
+plt.savefig("plot_packingtrace.pdf")

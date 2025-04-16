@@ -9,5 +9,7 @@
       numpy
       matplotlib
       seaborn
+      tqdm
+      scipy
     ];
   }

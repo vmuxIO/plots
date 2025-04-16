@@ -4,7 +4,7 @@ import numpy as np
 from tqdm import tqdm
 import seaborn as sns
 import matplotlib.pyplot as plt
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Tuple
 from dataclasses import dataclass
 
 def log(msg):
@@ -21,7 +21,7 @@ vm_types = pd.read_sql_query("SELECT vmTypeId, machineId, core, memory, hdd, ssd
 a = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, starttime as time_sorter FROM vm", conn)
 b = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, endtime as time_sorter FROM vm", conn)
 vm_requests = pd.concat([a, b]).sort_values("time_sorter") # one line/event for each start and end of a VM
-vm_requests = vm_requests.head(10000)
+vm_requests = vm_requests.head(100_000)
 
 
 @dataclass
@@ -41,13 +41,21 @@ class Machine():
     ssd: float = 0
     nic: float = 0
 
-    def start_vm(self, vm: VM, machine_type: pd.Series):
+    def start_vm(self, vm: VM, machine_type: pd.Series) -> bool:
+        _core = self.core + machine_type["core"]
+        _memory = self.memory + machine_type["memory"]
+        _hdd = self.hdd + machine_type["hdd"]
+        _ssd = self.ssd + machine_type["ssd"]
+        _nic = self.nic + machine_type["nic"]
+        if _core > 1 or _memory > 1 or _hdd > 1 or _ssd > 1 or _nic > 1:
+            return False
         self.vms.append(vm)
-        self.core += machine_type["core"]
-        self.memory += machine_type["memory"]
-        self.hdd += machine_type["hdd"]
-        self.ssd += machine_type["ssd"]
-        self.nic += machine_type["nic"]
+        self.core = _core
+        self.memory = _memory
+        self.hdd = _hdd
+        self.ssd = _ssd
+        self.nic = _nic
+        return True
 
     def stop_vm(self, vmId: int, machine_type: pd.Series) -> bool:
         matches = [vm for vm in self.vms if vm.vmId == vmId]
@@ -62,7 +70,7 @@ class Machine():
 
 class Scheduler():
     machine_types: Dict[int, List[Machine]] = dict()
-    vmId_to_machine_type: Dict[int, int] = dict()
+    vmId_to_machine: Dict[int, Tuple[int, int]] = dict() # vmId -> (machine_type, machine_idx)
 
     def schedule(self, vm_request: pd.Series):
         vm_type = vm_request["vmTypeId"]
@@ -75,39 +83,55 @@ class Scheduler():
         self.machine_types[optimal_type["machineId"]] = self.machine_types.get(optimal_type["machineId"], [])
         machines = self.machine_types[optimal_type["machineId"]]
         vm = VM(vmId=vm_request["vmId"], vmTypeId=vm_request["vmTypeId"])
-        if len(machines) == 0:
+        started = False
+        machine_idx = None
+        for i in range(len(machines) - 1, 0, -1):
+            machine = machines[i]
+            started = machine.start_vm(vm, optimal_type)
+            if started:
+                machine_idx = i
+                break
+        if not started:
             machines.append(Machine(machineId=optimal_type["machineId"], vms=[]))
-        machines[0].start_vm(vm, optimal_type)
-        self.vmId_to_machine_type[vm.vmId] = optimal_type["machineId"]
+            started = machines[-1].start_vm(vm, optimal_type)
+            machine_idx = len(machines) - 1
+        assert started
+        self.vmId_to_machine[vm.vmId] = (optimal_type["machineId"], machine_idx)
         # machines[vm_request["vmTypeId"]]
         pass
 
     def unschedule(self, vm_request: pd.Series):
         vm_type = vm_request["vmTypeId"]
         vmId = vm_request["vmId"]
-        machineId = self.vmId_to_machine_type[vmId]
+        machineId, machine_idx = self.vmId_to_machine[vmId]
         vm_usage = vm_types[(vm_types["vmTypeId"] == vm_type) & (vm_types["machineId"] == machineId)]
         assert len(vm_usage) == 1
         vm_usage = vm_usage.iloc[0]
-        for machine in self.machine_types[machineId]:
-            if machine.stop_vm(vmId, vm_usage):
-                if len(machine.vms) == 0:
-                    del self.machine_types[machineId]
-                del self.vmId_to_machine_type[vmId]
-                break
+        machine = self.machine_types[machineId][machine_idx]
+        assert machine.stop_vm(vmId, vm_usage)
+        if len(machine.vms) == 0:
+            del self.machine_types[machineId][machine_idx]
+        del self.vmId_to_machine[vmId]
 
         pass
 
 
+    def pool_size(self) -> int:
+        return sum(len(machines) for machines in self.machine_types.values())
+
+
     def dump(self):
-        print("Machine types:")
+        print("Machines:")
         for machineId, machines in self.machine_types.items():
             for machine in machines:
-                print(f"Machine type {machineId}:")
-                print(f"  {len(machine.vms)} VMs, core={machine.core}, memory={machine.memory}, hdd={machine.hdd}, ssd={machine.ssd}, nic={machine.nic}")
+                print(f" - Machine type {machineId}:")
+                print(f"   {len(machine.vms)} VMs, core={machine.core}, memory={machine.memory}, hdd={machine.hdd}, ssd={machine.ssd}, nic={machine.nic}")
 
 
 scheduler = Scheduler()
+time = None
+time_series_time = []
+time_series_pool_size = []
 
 for index, row in tqdm(vm_requests.iterrows(), total=len(vm_requests)):
     if row["starttime"] == row["time_sorter"]:
@@ -117,6 +141,35 @@ for index, row in tqdm(vm_requests.iterrows(), total=len(vm_requests)):
     else:
         assert False
 
+    if row["time_sorter"] is None:
+        continue
+    if time is None:
+        time = row["time_sorter"]
+        continue
+    if row["time_sorter"] > time:
+        time = row["time_sorter"]
+        time_series_time += [time]
+        time_series_pool_size += [scheduler.pool_size()]
 
 
+
+
+breakpoint()
+
+df = pd.DataFrame({
+    "time": time_series_time,
+    "pool_size": time_series_pool_size
+})
+
+sns.lineplot(
+    data=df,
+    x="time",
+    y="pool_size",
+    # hue="vmTypeId",
+    # style="vmTypeId",
+    # label=f'{self._name}',
+    # color=self._line_color,
+    # linestyle=self._line,
+)
+plt.show()
 breakpoint()

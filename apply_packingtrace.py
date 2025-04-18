@@ -141,7 +141,7 @@ class Machine():
 
 class Scheduler():
     iteration: int = 0 # update when checkpointing
-    checkpoint_file: str
+    checkpoint_basename: str
 
     machine_types: Dict[int, List[Machine]] = dict()
     vmId_to_machine: Dict[int, Tuple[int, int]] = dict() # vmId -> (machine_type, machine_idx)
@@ -162,10 +162,10 @@ class Scheduler():
 
     fragmented: bool
 
-    def __init__(self, fragmented: bool = False, find_bottlenecks: bool = False, checkpoint_file: str = "/tmp/checkpoint.pkl"):
+    def __init__(self, fragmented: bool = False, find_bottlenecks: bool = False, checkpoint_basename: str = "/tmp/checkpoint"):
         self.fragmented = fragmented
         self.find_bottlenecks = find_bottlenecks
-        self.checkpoint_file = checkpoint_file
+        self.checkpoint_basename = checkpoint_basename
         self.machine_types = dict()
         self.vmId_to_machine = dict()
 
@@ -176,9 +176,11 @@ class Scheduler():
             return pickle.load(f)
 
 
-    def checkpoint(self):
-        with open(self.checkpoint_file, "wb") as f:
+    def checkpoint(self, output: pd.DataFrame | None = None):
+        with open(f"{self.checkpoint_basename}.state.pkl", "wb") as f:
             pickle.dump(self, f)
+        if output is not None:
+            output.to_pickle(f"{self.checkpoint_basename}.output.pkl")
 
 
     def schedule(self, vm_request: pd.Series, vm_types):
@@ -297,7 +299,7 @@ class Scheduler():
                 print(f"   {len(machine.vms)} VMs, core={machine.core}, memory={machine.memory}, hdd={machine.hdd}, ssd={machine.ssd}, nic={machine.nic}")
 
 
-    def simulate(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, checkpoint_interval: int | None = None) -> pd.DataFrame:
+    def simulate(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, checkpoint_interval: int | None = 100_000) -> pd.DataFrame:
         time = None
         time_series_time = []
         time_series_pool_size = []
@@ -325,7 +327,21 @@ class Scheduler():
 
             if checkpoint_interval is not None and int(index) % checkpoint_interval == 0:
                 self.iteration = int(index)
-                self.checkpoint()
+                df = pd.DataFrame({
+                    "time": time_series_time,
+                    "pool_size": time_series_pool_size,
+                    "cores": time_series_cores,
+                    "memory": time_series_memory,
+                    "hdd": time_series_hdd,
+                    "ssd": time_series_ssd,
+                    "nic": time_series_nic,
+                    "core_bottleneck": time_series_core_bottleneck,
+                    "memory_bottleneck": time_series_memory_bottleneck,
+                    "hdd_bottleneck": time_series_hdd_bottleneck,
+                    "ssd_bottleneck": time_series_ssd_bottleneck,
+                    "nic_bottleneck": time_series_nic_bottleneck,
+                })
+                self.checkpoint(output=df)
 
             if row["time_sorter"] is None:
                 continue
@@ -376,6 +392,7 @@ class Scheduler():
             "hdd_bottleneck": time_series_hdd_bottleneck,
             "ssd_bottleneck": time_series_ssd_bottleneck,
             "nic_bottleneck": time_series_nic_bottleneck,
+            "fragmented": self.fragmented,
         })
         return df
 
@@ -388,16 +405,15 @@ def main():
     vm_requests, vm_types = load_data(args.input)
 
     log("Simulating")
-    checkpoint_file = f"{args.output}.checkpoint.pkl"
-    scheduler = Scheduler(fragmented=args.fragmented, find_bottlenecks=args.bottlenecks, checkpoint_file=checkpoint_file)
+    checkpoint_basename = f"{args.output}.checkpoint"
+    scheduler = Scheduler(fragmented=args.fragmented, find_bottlenecks=args.bottlenecks, checkpoint_basename=checkpoint_basename)
     if args.restore is not None:
         scheduler.restore(args.restore)
-        scheduler.checkpoint_file = checkpoint_file
+        scheduler.checkpoint_basename = checkpoint_basename
 
     df = scheduler.simulate(vm_requests, vm_types)
 
-    scheduler.checkpoint()
-    df["fragmented"] = args.fragmented
+    scheduler.checkpoint(output=df)
     log(df["pool_size"].describe())
     df.to_pickle(f"{args.output}.pkl")
 

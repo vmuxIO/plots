@@ -11,7 +11,7 @@ def log(msg):
     print(msg, flush=True)
 
 # Connect to the database
-conn = sqlite3.connect('AzurePackingTraceV1/packing_trace_zone_a_v1.sqlite')
+conn = sqlite3.connect('packing_trace_zone_a_v1.sqlite')
 
 # Load VM requests
 
@@ -21,7 +21,7 @@ vm_types = pd.read_sql_query("SELECT vmTypeId, machineId, core, memory, hdd, ssd
 a = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, starttime as time_sorter FROM vm", conn)
 b = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, endtime as time_sorter FROM vm", conn)
 vm_requests = pd.concat([a, b]).sort_values("time_sorter") # one line/event for each start and end of a VM
-vm_requests = vm_requests.head(100_000)
+vm_requests = vm_requests.head(2_000_000)
 
 
 @dataclass
@@ -72,6 +72,12 @@ class Scheduler():
     machine_types: Dict[int, List[Machine]] = dict()
     vmId_to_machine: Dict[int, Tuple[int, int]] = dict() # vmId -> (machine_type, machine_idx)
 
+    cores: float = 0
+    memory: float = 0
+    hdd: float = 0
+    ssd: float = 0
+    nic: float = 0
+
     fragmented: bool
 
     def __init__(self, fragmented: bool = False):
@@ -108,6 +114,13 @@ class Scheduler():
             started = machines[-1].start_vm(vm, optimal_type)
             machine_idx = len(machines) - 1
         assert started
+
+        self.cores += optimal_type["core"]
+        self.memory += optimal_type["memory"]
+        self.hdd += optimal_type["hdd"]
+        self.ssd += optimal_type["ssd"]
+        self.nic += optimal_type["nic"]
+
         self.vmId_to_machine[vm.vmId] = (optimal_type["machineId"], machine_idx)
         # machines[vm_request["vmTypeId"]]
         pass
@@ -121,6 +134,13 @@ class Scheduler():
         vm_usage = vm_usage.iloc[0]
         machine = self.machine_types[machineId][machine_idx]
         assert machine.stop_vm(vmId, vm_usage)
+
+        self.cores -= vm_usage["core"]
+        self.memory -= vm_usage["memory"]
+        self.hdd -= vm_usage["hdd"]
+        self.ssd -= vm_usage["ssd"]
+        self.nic -= vm_usage["nic"]
+
         if len(machine.vms) == 0:
             del self.machine_types[machineId][machine_idx]
         del self.vmId_to_machine[vmId]
@@ -139,10 +159,26 @@ class Scheduler():
                 print(f" - Machine type {machineId}:")
                 print(f"   {len(machine.vms)} VMs, core={machine.core}, memory={machine.memory}, hdd={machine.hdd}, ssd={machine.ssd}, nic={machine.nic}")
 
+    # def stranded_resources(self) -> Tuple[int, int, int, int, int]:
+    #     core = 0
+    #     memory = 0
+    #     hdd = 0
+    #     ssd = 0
+    #     nic = 0
+    #     for machines in self.machine_types.values():
+    #         for machine in machines:
+    #             core += machine.core
+    #             memory += machine.memory
+    #             hdd += machine.hdd
+    #             ssd += machine.ssd
+    #             nic += machine.nic
+    #     return core, memory, hdd, ssd, nic
+
     def simulate(self):
         time = None
         time_series_time = []
         time_series_pool_size = []
+        stranded_cores = [] # wasted (unused) core resources
 
         for index, row in tqdm(vm_requests.iterrows(), total=len(vm_requests)):
             if row["starttime"] == row["time_sorter"]:
@@ -164,21 +200,30 @@ class Scheduler():
 
         df = pd.DataFrame({
             "time": time_series_time,
-            "pool_size": time_series_pool_size
+            "pool_size": time_series_pool_size,
+            "cores": self.cores,
+            "memory": self.memory,
+            "hdd": self.hdd,
+            "ssd": self.ssd,
+            "nic": self.nic,
         })
         return df
+
+filename = "plot_packingtrace_2M"
 
 log("Simulating unified")
 scheduler = Scheduler()
 unified = scheduler.simulate()
 unified["pools"] = "unified"
 log(unified["pool_size"].describe())
+unified.to_pickle(f"{filename}.unified.pkl")
 
 log("Simulating fragmented")
 scheduler = Scheduler(fragmented=True)
 fragmented = scheduler.simulate()
 fragmented["pools"] = "fragmented"
 log(fragmented["pool_size"].describe())
+fragmented.to_pickle(f"{filename}.fragmented.pkl")
 
 df = pd.concat([unified, fragmented])
 
@@ -193,4 +238,6 @@ sns.lineplot(
     # color=self._line_color,
     # linestyle=self._line,
 )
-plt.savefig("plot_packingtrace.pdf")
+
+df.to_pickle(f"{filename}.pkl")
+plt.savefig(f"{filename}.pdf")

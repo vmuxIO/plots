@@ -4,24 +4,71 @@ import numpy as np
 from tqdm import tqdm
 import seaborn as sns
 import matplotlib.pyplot as plt
-from typing import List, Any, Dict, Tuple
+from typing import List, Any, Dict, Tuple, Self
 from dataclasses import dataclass
+import pickle
+import argparse
 
 def log(msg):
     print(msg, flush=True)
 
-# Connect to the database
-conn = sqlite3.connect('packing_trace_zone_a_v1.sqlite')
+def setup_parser():
+    parser = argparse.ArgumentParser(
+        description='Simulate Azure Packing trace'
+    )
 
-# Load VM requests
+    parser.add_argument('-f',
+                        '--fragmented',
+                        action='store_true',
+                        help='Use fragmented pools',
+                        )
+    # parser.add_argument('-W', '--width',
+    #                     type=float,
+    #                     default=12,
+    #                     help='Width of the plot in inches'
+    #                     )
+    parser.add_argument('-o',
+                        '--output',
+                        type=str,
+                        default="/tmp/plot_packingtrace",
+                        help='Basename for the output files',
+                        )
+    parser.add_argument('-i',
+                        '--input',
+                        type=str,
+                        default="packing_trace_zone_a_v1.sqlite",
+                        help='Sqlite file of Azure Packing Trace v1',
+                        )
+    parser.add_argument('-r',
+                        '--restore',
+                        type=str,
+                        help='Checkpoint to continue from',
+                        )
 
-log("Loading data")
-vm_types = pd.read_sql_query("SELECT vmTypeId, machineId, core, memory, hdd, ssd, nic FROM vmType", conn)
+    return parser
 
-a = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, starttime as time_sorter FROM vm", conn)
-b = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, endtime as time_sorter FROM vm", conn)
-vm_requests = pd.concat([a, b]).sort_values("time_sorter") # one line/event for each start and end of a VM
-vm_requests = vm_requests.head(2_000_000)
+
+def parse_args(parser):
+    args = parser.parse_args()
+
+    return args
+
+
+def load_data(sqlite_file: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    # Connect to the database
+    conn = sqlite3.connect(sqlite_file)
+
+    # Load VM requests
+
+    log("Loading data")
+    vm_types = pd.read_sql_query("SELECT vmTypeId, machineId, core, memory, hdd, ssd, nic FROM vmType", conn)
+
+    a = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, starttime as time_sorter FROM vm", conn)
+    b = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, endtime as time_sorter FROM vm", conn)
+    vm_requests = pd.concat([a, b]).sort_values("time_sorter", ignore_index=True) # one line/event for each start and end of a VM
+    vm_requests = vm_requests.head(2_000_000)
+
+    return vm_requests, vm_types
 
 
 @dataclass
@@ -69,6 +116,9 @@ class Machine():
         return True
 
 class Scheduler():
+    iteration: int = 0 # update when checkpointing
+    checkpoint_file: str
+
     machine_types: Dict[int, List[Machine]] = dict()
     vmId_to_machine: Dict[int, Tuple[int, int]] = dict() # vmId -> (machine_type, machine_idx)
 
@@ -80,13 +130,25 @@ class Scheduler():
 
     fragmented: bool
 
-    def __init__(self, fragmented: bool = False):
+    def __init__(self, fragmented: bool = False, checkpoint_file: str = "/tmp/checkpoint.pkl"):
         self.fragmented = fragmented
+        self.checkpoint_file = checkpoint_file
         self.machine_types = dict()
         self.vmId_to_machine = dict()
 
 
-    def schedule(self, vm_request: pd.Series):
+    @staticmethod
+    def restore(filename) -> Any:
+        with open(filename, "rb") as f:
+            return pickle.load(f)
+
+
+    def checkpoint(self):
+        with open(self.checkpoint_file, "wb") as f:
+            pickle.dump(self, f)
+
+
+    def schedule(self, vm_request: pd.Series, vm_types):
         vm_type = vm_request["vmTypeId"]
         machine_type_candidates = vm_types[vm_types["vmTypeId"] == vm_type]
 
@@ -125,7 +187,7 @@ class Scheduler():
         # machines[vm_request["vmTypeId"]]
         pass
 
-    def unschedule(self, vm_request: pd.Series):
+    def unschedule(self, vm_request: pd.Series, vm_types):
         vm_type = vm_request["vmTypeId"]
         vmId = vm_request["vmId"]
         machineId, machine_idx = self.vmId_to_machine[vmId]
@@ -159,34 +221,26 @@ class Scheduler():
                 print(f" - Machine type {machineId}:")
                 print(f"   {len(machine.vms)} VMs, core={machine.core}, memory={machine.memory}, hdd={machine.hdd}, ssd={machine.ssd}, nic={machine.nic}")
 
-    # def stranded_resources(self) -> Tuple[int, int, int, int, int]:
-    #     core = 0
-    #     memory = 0
-    #     hdd = 0
-    #     ssd = 0
-    #     nic = 0
-    #     for machines in self.machine_types.values():
-    #         for machine in machines:
-    #             core += machine.core
-    #             memory += machine.memory
-    #             hdd += machine.hdd
-    #             ssd += machine.ssd
-    #             nic += machine.nic
-    #     return core, memory, hdd, ssd, nic
 
-    def simulate(self):
+    def simulate(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, checkpoint_interval: int | None = 1_000) -> pd.DataFrame:
         time = None
         time_series_time = []
         time_series_pool_size = []
-        stranded_cores = [] # wasted (unused) core resources
 
         for index, row in tqdm(vm_requests.iterrows(), total=len(vm_requests)):
+            if int(index) < self.iteration:
+                continue # skip requests that we already processed (e.g. loaded checkpoint)
+
             if row["starttime"] == row["time_sorter"]:
-                scheduler.schedule(row)
+                self.schedule(row, vm_types)
             elif row["endtime"] == row["time_sorter"]:
-                scheduler.unschedule(row)
+                self.unschedule(row, vm_types)
             else:
                 assert False
+
+            if checkpoint_interval is not None and int(index) % checkpoint_interval == 0:
+                self.iteration = int(index)
+                self.checkpoint()
 
             if row["time_sorter"] is None:
                 continue
@@ -196,7 +250,7 @@ class Scheduler():
             if row["time_sorter"] > time:
                 time = row["time_sorter"]
                 time_series_time += [time]
-                time_series_pool_size += [scheduler.pool_size()]
+                time_series_pool_size += [self.pool_size()]
 
         df = pd.DataFrame({
             "time": time_series_time,
@@ -209,35 +263,28 @@ class Scheduler():
         })
         return df
 
-filename = "plot_packingtrace_2M"
 
-log("Simulating unified")
-scheduler = Scheduler()
-unified = scheduler.simulate()
-unified["pools"] = "unified"
-log(unified["pool_size"].describe())
-unified.to_pickle(f"{filename}.unified.pkl")
+def main():
+    parser = setup_parser()
+    args = parse_args(parser)
+    print(args)
 
-log("Simulating fragmented")
-scheduler = Scheduler(fragmented=True)
-fragmented = scheduler.simulate()
-fragmented["pools"] = "fragmented"
-log(fragmented["pool_size"].describe())
-fragmented.to_pickle(f"{filename}.fragmented.pkl")
+    vm_requests, vm_types = load_data(args.input)
 
-df = pd.concat([unified, fragmented])
+    log("Simulating")
+    checkpoint_file = f"{args.output}.checkpoint.pkl"
+    scheduler = Scheduler(fragmented=args.fragmented, checkpoint_file=checkpoint_file)
+    if args.restore is not None:
+        scheduler.restore(args.restore)
+        scheduler.checkpoint_file = checkpoint_file
+
+    df = scheduler.simulate(vm_requests, vm_types)
+
+    scheduler.checkpoint()
+    df["fragmented"] = args.fragmented
+    log(df["pool_size"].describe())
+    df.to_pickle(f"{args.output}.pkl")
 
 
-sns.lineplot(
-    data=df,
-    x="time",
-    y="pool_size",
-    hue="pools",
-    style="pools",
-    # label=f'{self._name}',
-    # color=self._line_color,
-    # linestyle=self._line,
-)
-
-df.to_pickle(f"{filename}.pkl")
-plt.savefig(f"{filename}.pdf")
+if __name__ == "__main__":
+    main()

@@ -8,6 +8,7 @@ from typing import List, Any, Dict, Tuple, Self
 from dataclasses import dataclass
 import pickle
 import argparse
+from enum import Enum
 
 def log(msg):
     print(msg, flush=True)
@@ -66,9 +67,18 @@ def load_data(sqlite_file: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     a = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, starttime as time_sorter FROM vm", conn)
     b = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, endtime as time_sorter FROM vm", conn)
     vm_requests = pd.concat([a, b]).sort_values("time_sorter", ignore_index=True) # one line/event for each start and end of a VM
-    vm_requests = vm_requests.head(2_000_000)
+    vm_requests = vm_requests.head(10_000)
 
     return vm_requests, vm_types
+
+
+class StartResult(Enum):
+    Ok = 0
+    CoreBottleneck = 1
+    MemoryBottleneck = 2
+    HddBottleneck = 3
+    SsdBottleneck = 4
+    NicBottleneck = 5
 
 
 @dataclass
@@ -88,21 +98,29 @@ class Machine():
     ssd: float = 0
     nic: float = 0
 
-    def start_vm(self, vm: VM, machine_type: pd.Series) -> bool:
+    def start_vm(self, vm: VM, machine_type: pd.Series) -> StartResult:
         _core = self.core + machine_type["core"]
         _memory = self.memory + machine_type["memory"]
         _hdd = self.hdd + machine_type["hdd"]
         _ssd = self.ssd + machine_type["ssd"]
         _nic = self.nic + machine_type["nic"]
-        if _core > 1 or _memory > 1 or _hdd > 1 or _ssd > 1 or _nic > 1:
-            return False
+        if _core > 1:
+            return StartResult.CoreBottleneck
+        if _memory > 1:
+            return StartResult.MemoryBottleneck
+        if _hdd > 1:
+            return StartResult.HddBottleneck
+        if _ssd > 1:
+            return StartResult.SsdBottleneck
+        if _nic > 1:
+            return StartResult.NicBottleneck
         self.vms.append(vm)
         self.core = _core
         self.memory = _memory
         self.hdd = _hdd
         self.ssd = _ssd
         self.nic = _nic
-        return True
+        return StartResult.Ok
 
     def stop_vm(self, vmId: int, machine_type: pd.Series) -> bool:
         matches = [vm for vm in self.vms if vm.vmId == vmId]
@@ -128,6 +146,13 @@ class Scheduler():
     ssd: float = 0
     nic: float = 0
 
+    # for each scheduling event (list item), which fraction machines could not be used because of _ bottleneck
+    core_bottleneck_f: List[float] = []
+    memory_bottleneck_f: List[float] = []
+    hdd_bottleneck_f: List[float] = []
+    ssd_bottleneck_f: List[float] = []
+    nic_bottleneck_f: List[float] = []
+
     fragmented: bool
 
     def __init__(self, fragmented: bool = False, checkpoint_file: str = "/tmp/checkpoint.pkl"):
@@ -149,6 +174,12 @@ class Scheduler():
 
 
     def schedule(self, vm_request: pd.Series, vm_types):
+        core_bottlenecks = 0
+        memory_bottlenecks = 0
+        hdd_bottlenecks = 0
+        ssd_bottlenecks = 0
+        nic_bottlenecks = 0
+
         vm_type = vm_request["vmTypeId"]
         machine_type_candidates = vm_types[vm_types["vmTypeId"] == vm_type]
 
@@ -163,19 +194,52 @@ class Scheduler():
         self.machine_types[optimal_type["machineId"]] = self.machine_types.get(optimal_type["machineId"], [])
         machines = self.machine_types[optimal_type["machineId"]]
         vm = VM(vmId=vm_request["vmId"], vmTypeId=vm_request["vmTypeId"])
-        started = False
+        started = None
         machine_idx = None
         for i in range(len(machines) - 1, 0, -1):
             machine = machines[i]
             started = machine.start_vm(vm, optimal_type)
-            if started:
+            if started == StartResult.CoreBottleneck:
+                core_bottlenecks += 1
+            if started == StartResult.MemoryBottleneck:
+                memory_bottlenecks += 1
+            if started == StartResult.HddBottleneck:
+                hdd_bottlenecks += 1
+            if started == StartResult.SsdBottleneck:
+                ssd_bottlenecks += 1
+            if started == StartResult.NicBottleneck:
+                nic_bottlenecks += 1
+            if started == StartResult.Ok:
                 machine_idx = i
                 break
-        if not started:
+
+        # create new machine if necessary
+        if started is None or started != StartResult.Ok:
             machines.append(Machine(machineId=optimal_type["machineId"], vms=[]))
             started = machines[-1].start_vm(vm, optimal_type)
             machine_idx = len(machines) - 1
-        assert started
+            total_bottlenecks = core_bottlenecks + memory_bottlenecks + hdd_bottlenecks + ssd_bottlenecks + nic_bottlenecks
+            if total_bottlenecks > 0:
+                self.core_bottleneck_f += [core_bottlenecks / total_bottlenecks]
+                self.memory_bottleneck_f += [memory_bottlenecks / total_bottlenecks]
+                self.hdd_bottleneck_f += [hdd_bottlenecks / total_bottlenecks]
+                self.ssd_bottleneck_f += [ssd_bottlenecks / total_bottlenecks]
+                self.nic_bottleneck_f += [nic_bottlenecks / total_bottlenecks]
+            else:
+                # this case looks like a bottleneck, but is none, because no single machine instance of that type existed yet
+                self.core_bottleneck_f += [0]
+                self.memory_bottleneck_f += [0]
+                self.hdd_bottleneck_f += [0]
+                self.ssd_bottleneck_f += [0]
+                self.nic_bottleneck_f += [0]
+        else:
+            # there was no bottleneck
+            self.core_bottleneck_f += [0]
+            self.memory_bottleneck_f += [0]
+            self.hdd_bottleneck_f += [0]
+            self.ssd_bottleneck_f += [0]
+            self.nic_bottleneck_f += [0]
+        assert started == StartResult.Ok
 
         self.cores += optimal_type["core"]
         self.memory += optimal_type["memory"]
@@ -185,7 +249,7 @@ class Scheduler():
 
         self.vmId_to_machine[vm.vmId] = (optimal_type["machineId"], machine_idx)
         # machines[vm_request["vmTypeId"]]
-        pass
+
 
     def unschedule(self, vm_request: pd.Series, vm_types):
         vm_type = vm_request["vmTypeId"]
@@ -222,10 +286,20 @@ class Scheduler():
                 print(f"   {len(machine.vms)} VMs, core={machine.core}, memory={machine.memory}, hdd={machine.hdd}, ssd={machine.ssd}, nic={machine.nic}")
 
 
-    def simulate(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, checkpoint_interval: int | None = 1_000) -> pd.DataFrame:
+    def simulate(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, checkpoint_interval: int | None = None) -> pd.DataFrame:
         time = None
         time_series_time = []
         time_series_pool_size = []
+        time_series_cores = []
+        time_series_memory = []
+        time_series_hdd = []
+        time_series_ssd = []
+        time_series_nic = []
+        time_series_core_bottleneck = []
+        time_series_memory_bottleneck = []
+        time_series_hdd_bottleneck = []
+        time_series_ssd_bottleneck = []
+        time_series_nic_bottleneck = []
 
         for index, row in tqdm(vm_requests.iterrows(), total=len(vm_requests)):
             if int(index) < self.iteration:
@@ -248,18 +322,42 @@ class Scheduler():
                 time = row["time_sorter"]
                 continue
             if row["time_sorter"] > time:
+                # we have processed all events for this current point in time
+                # (multiple rows can have the same time for which we aggregate results)
                 time = row["time_sorter"]
                 time_series_time += [time]
                 time_series_pool_size += [self.pool_size()]
+                # cluster usage (1-stranding) statistics
+                time_series_cores += [ self.cores ]
+                time_series_memory += [ self.memory ]
+                time_series_hdd += [ self.hdd ]
+                time_series_ssd += [ self.ssd ]
+                time_series_nic += [ self.nic ]
+                # scheduler bottleneck statistics
+                time_series_core_bottleneck += [sum(self.core_bottleneck_f) / len(self.core_bottleneck_f)]
+                time_series_memory_bottleneck += [sum(self.memory_bottleneck_f) / len(self.memory_bottleneck_f)]
+                time_series_hdd_bottleneck += [sum(self.hdd_bottleneck_f) / len(self.hdd_bottleneck_f)]
+                time_series_ssd_bottleneck += [sum(self.ssd_bottleneck_f) / len(self.ssd_bottleneck_f)]
+                time_series_nic_bottleneck += [sum(self.nic_bottleneck_f) / len(self.nic_bottleneck_f)]
+                self.core_bottleneck_f.clear()
+                self.memory_bottleneck_f.clear()
+                self.hdd_bottleneck_f.clear()
+                self.ssd_bottleneck_f.clear()
+                self.nic_bottleneck_f.clear()
 
         df = pd.DataFrame({
             "time": time_series_time,
             "pool_size": time_series_pool_size,
-            "cores": self.cores,
-            "memory": self.memory,
-            "hdd": self.hdd,
-            "ssd": self.ssd,
-            "nic": self.nic,
+            "cores": time_series_cores,
+            "memory": time_series_memory,
+            "hdd": time_series_hdd,
+            "ssd": time_series_ssd,
+            "nic": time_series_nic,
+            "core_bottleneck": time_series_core_bottleneck,
+            "memory_bottleneck": time_series_memory_bottleneck,
+            "hdd_bottleneck": time_series_hdd_bottleneck,
+            "ssd_bottleneck": time_series_ssd_bottleneck,
+            "nic_bottleneck": time_series_nic_bottleneck,
         })
         return df
 

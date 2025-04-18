@@ -61,6 +61,86 @@ def parse_args(parser):
     return args
 
 
+def rank_machines_by_network_speed(data):
+    """
+    Rank machines by inferred network speed based on network usage fractions.
+
+    Parameters:
+        data: List of tuples (vmTypeId, machineId, network_usage)
+
+    Returns:
+        List of tuples (machineId, relative_speed) sorted by speed (highest to lowest)
+    """
+    # Group by vmTypeId
+    vm_to_machines = {}
+    for vm_id, machine_id, usage in data:
+        if vm_id not in vm_to_machines:
+            vm_to_machines[vm_id] = []
+        vm_to_machines[vm_id].append((machine_id, usage))
+
+    # For each VM type, normalize and calculate relative speeds
+    relative_speeds = {}
+    for vm_id, machine_usages in vm_to_machines.items():
+        # Find maximum usage within each VM type for normalization
+        max_usage = max(usage for _, usage in machine_usages)
+
+        for machine_id, usage in machine_usages:
+            # Lower usage fraction implies higher network speed
+            # Normalize to get relative speed compared to other machines
+            normalized_speed = max_usage / usage if usage > 0 else float('inf')
+
+            if machine_id not in relative_speeds:
+                relative_speeds[machine_id] = []
+            relative_speeds[machine_id].append(normalized_speed)
+
+    # Calculate average relative speed for each machine
+    avg_speeds = {}
+    for machine_id, speeds in relative_speeds.items():
+        avg_speeds[machine_id] = sum(speeds) / len(speeds)
+
+    # Rank machines by average relative speed (highest first)
+    ranked_machines = sorted(avg_speeds.items(), key=lambda x: x[1], reverse=True)
+
+    return ranked_machines
+
+
+def rank_machine_types(vm_types) -> pd.DataFrame:
+    data = []
+    for index, row in vm_types.iterrows():
+        data += [(str(row["vmTypeId"]), str(row["machineId"]), float(row["nic"]))]
+
+    # Example usage
+    # data = [
+    #     ("vm1", "machine1", 0.2),
+    #     ("vm1", "machine2", 0.1),  # machine2 is faster for vm1 (uses half the fraction)
+    #     ("vm2", "machine1", 0.3),
+    #     ("vm2", "machine3", 0.15)  # machine3 is faster for vm2
+    # ]
+
+    ranked_machines = rank_machines_by_network_speed(data)
+    print("Machines ranked by network speed (fastest to slowest):")
+    for machine_id, speed in ranked_machines:
+        print(f" - {machine_id} (Relative Speed: {speed:.2f})")
+
+    relative_speeds = []
+    for index, row in vm_types.iterrows():
+        relative_speed = [ speed for machine_id, speed in ranked_machines if machine_id == str(row["machineId"]) ]
+        assert len(relative_speed) == 1
+        relative_speeds += [ float(relative_speed[0]) ]
+
+    vm_types["nic_performance"] = relative_speeds
+
+    return vm_types.sort_values("nic_performance", ascending=False, ignore_index=True)
+
+
+def fragment_pool(vm_types: pd.DataFrame) -> pd.DataFrame:
+    for vm_type in vm_types["vmTypeId"].unique():
+        # vm_types.loc[vm_types["vmTypeId"] == vm_type, "machineId"] = vm_types.loc[vm_types["vmTypeId"] == vm_type, "machineId"].apply(lambda x: int(x) % 3)
+        vm_types_n = vm_types[vm_types["vmTypeId"] == vm_type]
+        num = len(vm_types_n)
+    return vm_types
+
+
 def load_data(sqlite_file: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     # Connect to the database
     conn = sqlite3.connect(sqlite_file)
@@ -196,7 +276,19 @@ class Scheduler():
         # TODO select optimal candidate
         if self.fragmented:
             pool_fragment = int(vm_request["vmId"]) % 3
-            optimal_type = machine_type_candidates.iloc[pool_fragment % len(machine_type_candidates)]
+            options = len(machine_type_candidates)
+            ranges = [
+                0,
+                # passthrough
+                int(options / 3),
+                # mediation
+                int(options / 3 * 2),
+                # emulation
+                options
+            ]
+            # candidates in our fragmented pool are:
+            # ranges[pool_fragment] ... ranges[pool_fragment + 1]
+            optimal_type = machine_type_candidates.iloc[ranges[pool_fragment]]
         else:
             optimal_type = machine_type_candidates.iloc[0]
 
@@ -404,6 +496,9 @@ def main():
 
     vm_requests, vm_types = load_data(args.input)
 
+    log("Ranking NICs")
+    vm_types = rank_machine_types(vm_types)
+
     log("Simulating")
     checkpoint_basename = f"{args.output}.checkpoint"
     scheduler = Scheduler(fragmented=args.fragmented, find_bottlenecks=args.bottlenecks, checkpoint_basename=checkpoint_basename)
@@ -416,6 +511,7 @@ def main():
     scheduler.checkpoint(output=df)
     log(df["pool_size"].describe())
     df.to_pickle(f"{args.output}.pkl")
+    log(f"Wrote output to {args.output}.pkl")
 
 
 if __name__ == "__main__":

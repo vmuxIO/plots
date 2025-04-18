@@ -73,7 +73,7 @@ def load_data(sqlite_file: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     a = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, starttime as time_sorter FROM vm", conn)
     b = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, endtime as time_sorter FROM vm", conn)
     vm_requests = pd.concat([a, b]).sort_values("time_sorter", ignore_index=True) # one line/event for each start and end of a VM
-    vm_requests = vm_requests.head(100_000)
+    # vm_requests = vm_requests.head(100_000)
 
     return vm_requests, vm_types
 

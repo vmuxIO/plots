@@ -11,6 +11,8 @@ import argparse
 def log(msg):
     print(msg, flush=True)
 
+COLORS = [ str(i) for i in range(20) ]
+
 def setup_parser():
     parser = argparse.ArgumentParser(
         description='Plot packet loss graph'
@@ -35,12 +37,21 @@ def setup_parser():
                         type=argparse.FileType('w+'),
                         help='''Path to the output plot
                              (default: packet_loss.pdf)''',
-                        default='ycsb.pdf'
+                        default='packingtrace.pdf'
                         )
-    parser.add_argument('-l', '--logarithmic',
-                        action='store_true',
-                        help='Plot logarithmic latency axis',
-                        )
+    for color in COLORS:
+        parser.add_argument(f'--{color}',
+                            type=argparse.FileType('r'),
+                            nargs='+',
+                            help=f'''Paths to MoonGen measurement logs for
+                                  the {color} plot''',
+                            )
+    for color in COLORS:
+        parser.add_argument(f'--{color}-name',
+                            type=str,
+                            default=color,
+                            help=f'''Name of {color} plot''',
+                            )
 
     return parser
 
@@ -48,21 +59,34 @@ def setup_parser():
 def parse_args(parser):
     args = parser.parse_args()
 
+    if not any([args.__dict__[color] for color in COLORS]):
+        parser.error('At least one set of moongen log paths must be ' +
+                     'provided')
+
     return args
 
 
 parser = setup_parser()
 args = parse_args(parser)
 
+dfs = []
+for color in COLORS:
+    if args.__dict__[color]:
+        arg_dfs = [ pd.read_pickle(f.name) for f in args.__dict__[color] ]
+        arg_df = pd.concat(arg_dfs)
+        name = args.__dict__[f'{color}_name']
+        arg_df["hue"] = name
+        dfs += [ arg_df ]
+
+df = pd.concat(dfs, ignore_index=True)
+
+
 sns.set_theme()
 sns.set_style("whitegrid")
 
 fig = plt.figure(figsize=(args.width, args.height))
 
-
-df = pd.read_pickle("/tmp/packingtrace_0.1M_unified.pkl")
-
-# df = df[df["time"] >= 0]
+df = df[(df["time"] >= 0) & (df["time"] <= 14)]
 
 
 breakpoint()
@@ -72,13 +96,16 @@ sns.lineplot(
     data=df,
     x="time",
     y="pool_size",
-    hue="fragmented",
-    style="fragmented",
+    hue="hue",
+    style="hue",
     # label=f'{self._name}',
     # color=self._line_color,
     # linestyle=self._line,
 )
-plt.savefig("packingtrace.pdf")
+plt.savefig(args.output.name)
+
+breakpoint()
+
 
 fig = plt.figure(figsize=(args.width, args.height))
 
@@ -90,21 +117,34 @@ for resource in ["cores", "memory", "hdd", "ssd", "nic"]:
     d["utilization"] = df[resource] / df["pool_size"]
     d["stranding"] = 1 - (df[resource] / df["pool_size"])
     d["resource"] = resource
+    d["hue"] = df["hue"]
     dfs += [ pd.DataFrame(d) ]
 df = pd.concat(dfs, ignore_index=True)
 
 breakpoint()
 
-log("plot utilization data")
-g = sns.lineplot(
+g = sns.barplot(
     data=df,
-    x="time",
+    x="resource",
     y="stranding",
-    hue="resource",
-    style="resource",
+    hue="hue",
     # label=f'{self._name}',
     # color=self._line_color,
     # linestyle=self._line,
 )
+
+# df = df[df["hue"] == "Unified"]
+#
+# log("plot utilization data")
+# g = sns.lineplot(
+#     data=df,
+#     x="time",
+#     y="stranding",
+#     hue="resource",
+#     style="resource",
+#     # label=f'{self._name}',
+#     # color=self._line_color,
+#     # linestyle=self._line,
+# )
 g.set(ylim=(0, 1))
-plt.savefig("packingtrace_utilization.pdf")
+plt.savefig(f"{args.output.name}.utilization.pdf")

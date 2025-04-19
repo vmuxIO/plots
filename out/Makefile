@@ -1,4 +1,4 @@
-VERSION := vmux0.0.12-pre
+VERSION := vmux0.0.13
 OUT_DIR := ../out/$(VERSION)/
 # OUT_DIR := ./
 
@@ -26,6 +26,12 @@ install:
 	# cp microbenchmark-cdf.pdf $(OVERLEAF)/microbenchmark-cdf.pdf
 	# cp microbenchmark-bars.pdf $(OVERLEAF)/microbenchmark-bars.pdf
 
+packingtrace.pdf: $(wildcard ../dat/packingtrace/*) ../plot_packingtrace.py
+	python3 ../plot_packingtrace.py -o $(OUT_DIR)/packingtrace.pdf \
+		-W $(WIDTH2) -H 2.2 \
+		--1-name "Unified" --1 ../dat/packingtrace/all_unified.checkpoint.output.pkl \
+		--2-name "Frag." --2 ../dat/packingtrace/all_fragmented.checkpoint.output.pkl \
+		--3-name "Newfrag." --3 ../dat/packingtrace/all_newfrag.checkpoint.output.pkl \
 
 ptp:
 	python3 ../plot_ptp.py -o $(OUT_DIR)/ptp.pdf \
@@ -267,6 +273,10 @@ slides-microbenchmark-bars.pdf: $(DATA_FILES) ../plot_throughput_bars.py
 #   --blue-name "vMux" --blue ../dat/vfio_vs_vmux2/output_pcvm_vmux_normal_vhostoff_ioregionfdoff_moongen_*kpps_1020B_30s_rep*.log \
 #   --cyan-name "vfio" --cyan ../dat/vfio_vs_vmux2/output_pcvm_vfio_normal_vhostoff_ioregionfdoff_moongen_*kpps_1020B_30s_rep*.log \
 #    --green-name "vhost" --green ../dat/gr/virtio2/output_pcvm_bridge_normal_vhoston_ioregionfdoff_moongen_*kpps_1020B_30s_rep*.log
+
+vmtype-zones.pdf: $(DATA_FILES) ../plot_vmtype_zones.py
+	python3 ../plot_vmtype_zones.py -W $(WIDTH) -H 1.8 \
+    -o $(OUT_DIR)/vmtype-zones.pdf
 
 help:
 	@echo "Make targets:"

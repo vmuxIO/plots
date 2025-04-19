@@ -701,12 +701,30 @@ class OptimalScheduler():
                 assert False, "Unknown solver status"
 
         if status == pywraplp.Solver.OPTIMAL:
+            print("Machines:")
             num_machines = 0
             for (t, j), y_t_j in y.items():
                 if y_t_j.solution_value() == 1:
-                    print(f" - y_{t}_{j}")
-                    num_machines += 1
+                    vms = []
+                    core_usage = 0
+                    # for (i, t, j), x_i_t_j in x.items():
+                    for _vm_idx, vm in active_vms.iterrows():
+                        i = vm["vmId"]
+                        if (i, t, j) in x and x[i, t, j].solution_value() == 1:
+                            vms += [ i ]
+                            core_usage += vm_types[vm_types["machineId"] == t].iloc[0]["core"]
+                    if vms:
+                        num_machines += 1
+                        print(f" - Machine {j} of type {t}, {len(vms)} VMs, core usage {core_usage}")
             print(f"Number of machines used: {num_machines}")
+
+            # print("VMs:")
+            # num_vms = 0
+            # for (i, t, j), x_i_t_j in x.items():
+            #     if x_i_t_j.solution_value() == 1:
+            #         print(f" - VM {i} on machine {j} of type {t}")
+            #         num_vms += 1
+            # print(f"VMs total: {num_vms}")
 
         log(f"{(start_solve - start)/60:.1f} minutes to setup, {(time.time() - start_solve)/60:.1f} minutes to solve")
 

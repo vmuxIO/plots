@@ -5,7 +5,7 @@ OUT_DIR := ../out/$(VERSION)/
 DATA_DIR := ../dat/$(VERSION)/
 DATA_FILES = $(wildcard $(DATA_DIR)/*)
 
-PAPER_FIGURES := microbenchmark-cdf.pdf microbenchmark-bars.pdf mediation.pdf microservices.pdf ycsb.pdf
+PAPER_FIGURES := microbenchmark-cdf.pdf microbenchmark-bars.pdf mediation.pdf microservices.pdf ycsb.pdf packingtrace.pdf
 # PAPER_FIGURES := mediation.pdf microservices.pdf ycsb.pdf
 # PAPER_FIGURES := mediation.pdf iperf.pdf ycsb.pdf
 
@@ -29,9 +29,17 @@ install:
 packingtrace.pdf: $(wildcard ../dat/packingtrace/*) ../plot_packingtrace.py
 	python3 ../plot_packingtrace.py -o $(OUT_DIR)/packingtrace.pdf \
 		-W $(WIDTH2) -H 2.2 \
+		--1-name "Unified pool" --1 ../dat/packingtrace/all_unified.checkpoint.output.pkl \
+		--3-name "Fragmented pools" --3 ../dat/packingtrace/all_newfrag.checkpoint.output.pkl \
+
+packingtrace_stranding.pdf: $(wildcard ../dat/packingtrace/*) ../plot_packingtrace.py
+	python3 ../plot_packingtrace.py -o $(OUT_DIR)/packingtrace_stranding.pdf \
+		--utilization \
+		-W $(WIDTH2) -H 2.2 \
 		--1-name "Unified" --1 ../dat/packingtrace/all_unified.checkpoint.output.pkl \
-		--2-name "Frag." --2 ../dat/packingtrace/all_fragmented.checkpoint.output.pkl \
-		--3-name "Newfrag." --3 ../dat/packingtrace/all_newfrag.checkpoint.output.pkl \
+		--3-name "Fragmented" --3 ../dat/packingtrace/all_newfrag.checkpoint.output.pkl \
+
+#	--2-name "Fragmented" --2 ../dat/packingtrace/all_fragmented.checkpoint.output.pkl \
 
 ptp:
 	python3 ../plot_ptp.py -o $(OUT_DIR)/ptp.pdf \

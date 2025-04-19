@@ -19,6 +19,11 @@ def setup_parser():
         description='Plot packet loss graph'
     )
 
+    parser.add_argument('-u',
+                        '--utilization',
+                        action='store_true',
+                        help='Plot utilization instead',
+                        )
     parser.add_argument('-t',
                         '--title',
                         type=str,
@@ -208,19 +213,26 @@ def plot_utilization(df):
 
     fig = plt.figure(figsize=(args.width, args.height))
 
+    resource_map = {
+        "cores": "CPU",
+        "memory": "Memory",
+        "hdd": "HDD",
+        "ssd": "SSD",
+        "nic": "NIC",
+    }
+
     log("cruching utilization data")
     dfs = []
     for resource in ["cores", "memory", "hdd", "ssd", "nic"]:
         d = dict()
         d["time"] = df["time"]
         d["utilization"] = df[resource] / df["pool_size"]
-        d["stranding"] = 1 - (df[resource] / df["pool_size"])
-        d["resource"] = resource
-        d["hue"] = df["hue"]
+        d["stranding"] = 100 * (1 - (df[resource] / df["pool_size"]))
+        d["resource"] = resource_map[resource]
+        d["Pool"] = df["hue"]
         dfs += [ pd.DataFrame(d) ]
     df = pd.concat(dfs, ignore_index=True)
-
-    breakpoint()
+    df = df[df["resource"] != "hdd"]
 
     log("plotting utilization data")
     log("(takes >30GB RAM and a few minutes)")
@@ -228,11 +240,12 @@ def plot_utilization(df):
         data=df,
         x="resource",
         y="stranding",
-        hue="hue",
+        hue="Pool",
         # label=f'{self._name}',
         # color=self._line_color,
         # linestyle=self._line,
     )
+    g.set_ylabel("Resource stranding [%]")
 
     # df = df[df["hue"] == "Unified"]
     #
@@ -248,12 +261,14 @@ def plot_utilization(df):
     #     # linestyle=self._line,
     # )
     g.set(ylim=(0, 1))
-    plt.savefig(f"{args.output.name}.utilization.pdf")
+    plt.tight_layout(pad=0.1)
+    plt.savefig(f"{args.output.name}.pdf")
 
 
-
-g1 = add_nr_vms_plot()
-plot_poolsize(df, g1)
-# plot_utilization(df)
+if not args.utilization:
+    g1 = add_nr_vms_plot()
+    plot_poolsize(df, g1)
+else:
+    plot_utilization(df)
 
 

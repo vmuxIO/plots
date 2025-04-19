@@ -87,18 +87,18 @@ sns.set_theme()
 sns.set_style("whitegrid")
 
 
-def plot_poolsize(df):
-    fig = plt.figure(figsize=(args.width, args.height))
+def plot_poolsize(df, g_nr_vms_plot):
+    ax = g_nr_vms_plot.twinx()
 
     placeholder = dict()
     for colname in df.columns:
         placeholder[colname] = [ NaN ]
     placeholder["hue"] = [ "Total VMs" ]
     df = pd.concat([pd.DataFrame(placeholder), df], ignore_index=True)
-    breakpoint()
 
 
     log("plot packingtrace data")
+    df["pool_size"] = df["pool_size"] / 1000
     g = sns.lineplot(
         data=df,
         x="time",
@@ -108,22 +108,32 @@ def plot_poolsize(df):
         # label=f'{self._name}',
         # color=self._line_color,
         # linestyle=self._line,
+        ax=ax,
     )
+    g.set_ylabel("Hardware pool\nsize (thousand)")
+    sns.move_legend(
+        ax, "upper center",
+        bbox_to_anchor=(0.5, 1.23),
+        ncol=3,
+        title=None,
+        frameon=False,
+    )
+    plt.tight_layout(pad=0.1)
+    plt.subplots_adjust(top=0.9)
     plt.savefig(args.output.name)
 
     return g
 
 
-def add_nr_vms_plot(g_poolsize):
-    ax = g_poolsize.twinx()
+def add_nr_vms_plot():
+    fig = plt.figure(figsize=(args.width, args.height))
 
     # Connect to the database
-    log("Reading db")
     conn = sqlite3.connect('../packing_trace_zone_a_v1.sqlite')
 
     # Load VM requests
 
-    log("Creating df")
+    log("Loading trace data")
     vm_df = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime FROM vm", conn)
 
     # Generate day range (0 to 14 for the 14-day period)
@@ -160,8 +170,10 @@ def add_nr_vms_plot(g_poolsize):
     # df = pd.concat(results_by_type)
     df = pd.DataFrame({ 'day': times, 'active_count': active_counts })
 
-    breakpoint()
 
+    log("plotting VM count data")
+    sns.set_style("white")
+    df["active_count"] = df["active_count"] / 1_000
     plot = sns.lineplot(
         data=df,
         # x=bin_edges[1:],
@@ -180,10 +192,15 @@ def add_nr_vms_plot(g_poolsize):
         # markeredgecolor='black',
         # markersize=60,
         # markeredgewidth=1,
-        ax=ax,
     )
+    plot.set_ylabel("Total VMs (thousand)")
+    plot.set_xlabel("Time (days)")
+    plt.grid(axis='x')
+    plt.xlim(0, 14)
     plt.savefig(args.output.name)
+    sns.set_style("whitegrid")
 
+    return plot
 
 
 def plot_utilization(df):
@@ -235,8 +252,8 @@ def plot_utilization(df):
 
 
 
-g1 = plot_poolsize(df)
-add_nr_vms_plot(g1)
+g1 = add_nr_vms_plot()
+plot_poolsize(df, g1)
 # plot_utilization(df)
 
 

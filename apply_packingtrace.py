@@ -602,7 +602,7 @@ class OptimalScheduler():
         # active_mask = (vm_requests['starttime'] <= time) & ((vm_requests['endtime'].isnull()) | (vm_requests['endtime'] >= time))
         # active_vms = vm_requests[active_mask]
 
-        active_vms = vm_requests.head(100)
+        active_vms = vm_requests
 
         self.solve(active_vms, vm_types)
 
@@ -729,16 +729,22 @@ class OptimalScheduler():
                 if y_t_j.solution_value() == 1:
                     vms = []
                     core_usage = 0
+                    memory_usage = 0
+                    ssd_usage = 0
+                    nic_usage = 0
                     # for (i, t, j), x_i_t_j in x.items():
                     for _vm_idx, vm in active_vms.iterrows():
                         i = vm["vmId"]
                         if (i, t, j) in x and x[i, t, j].solution_value() == 1:
                             vms += [ i ]
-                            core_usage += vm_types[vm_types["machineId"] == t].iloc[0]["core"]
+                            core_usage += [ vm_types[(vm_types["vmTypeId"] == vm["vmTypeId"]) & (vm_types["machineId"] == t)]["core"] ]
+                            memory_usage += [ vm_types[(vm_types["vmTypeId"] == vm["vmTypeId"]) & (vm_types["machineId"] == t)]["memory"] ]
+                            ssd_usage += [ vm_types[(vm_types["vmTypeId"] == vm["vmTypeId"]) & (vm_types["machineId"] == t)]["ssd"] ]
+                            nic_usage += [ vm_types[(vm_types["vmTypeId"] == vm["vmTypeId"]) & (vm_types["machineId"] == t)]["nic"] ]
                     if vms:
                         num_machines += 1
                         num_vms += len(vms)
-                        print(f" - Machine {j} of type {t}, {len(vms)} VMs, core usage {core_usage}")
+                        print(f" - Machine {j} of type {t}, {len(vms)} VMs, core {core_usage:.2f}, memory {memory_usage:.2f}, ssd {ssd_usage:.2f}, nic {nic_usage:.2f}")
             print(f"Number of machines used: {num_machines}")
             print(f"Number of VMs: {num_vms}")
 
@@ -762,7 +768,7 @@ def main():
     print(args)
 
     vm_requests, vm_types = load_data(args.input)
-    vm_requests = vm_requests.head(100)
+    vm_requests = vm_requests.head(1000)
 
     log("Ranking NICs")
     vm_types = rank_machine_types(vm_types)

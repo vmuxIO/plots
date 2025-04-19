@@ -10,6 +10,7 @@ import pickle
 import argparse
 from enum import Enum
 from math import nan as NaN
+from ortools.linear_solver import pywraplp
 
 def log(msg):
     print(msg, flush=True)
@@ -118,9 +119,9 @@ def rank_machine_types(vm_types) -> pd.DataFrame:
     # ]
 
     ranked_machines = rank_machines_by_network_speed(data)
-    print("Machines ranked by network speed (fastest to slowest):")
-    for machine_id, speed in ranked_machines:
-        print(f" - {machine_id} (Relative Speed: {speed:.2f})")
+    # print("Machines ranked by network speed (fastest to slowest):")
+    # for machine_id, speed in ranked_machines:
+    #     print(f" - {machine_id} (Relative Speed: {speed:.2f})")
 
     relative_speeds = []
     for index, row in vm_types.iterrows():
@@ -489,6 +490,90 @@ class Scheduler():
         return df
 
 
+class OptimalScheduler():
+    def __init__(self):
+        pass
+
+    def simulate(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame):
+        # useful resource: https://github.com/AKafakA/vm_schedule_simulator/blob/main/algorithm/schedule/optimal_bin_packing.py
+
+        # see https://developers.google.com/optimization/lp/lp_advanced for ortools solvers (e.g. GLOP, Linerar optimization)
+        # https://developers.google.com/optimization/mip/mip_example for a mention of SCIP (Integer optimization)
+        # perhaps we could also consider bin-packing specific optimizers https://developers.google.com/optimization/pack/bin_packing
+        solver = pywraplp.Solver.CreateSolver("GLOP")
+        assert solver is not None
+
+        workerIds = [ 0, 1 ]
+        vm_resources = {
+            # resources to be allocated for a VM
+            0: 0.4,
+            1: 0.5,
+        }
+
+        # x[i, b] = 1 if VM i is packed in machine b.
+        x = {}
+        x[0, 0] = solver.BoolVar("x_0_0") # 0
+        x[0, 1] = solver.BoolVar("x_0_1") # 1
+        x[1, 1] = solver.BoolVar("x_0_1") # 1
+
+        # Assume one task only be placed into one machines
+        # TODO maybe == 1 to force packing of all VMs?
+        solver.Add(sum(x[0, b] for b in [ 0, 1 ]) == 1)
+        solver.Add(sum(x[1, b] for b in [ 1 ]) == 1)
+
+        # The amount packed in each bin cannot exceed its capacity (1).
+        solver.Add( # VMs that can run on worker 0: [ 0 ]
+            sum(x[i, 0] * vm_resources[i] for i in [ 0 ])
+            <= 1
+        )
+        solver.Add( # VMs that can run on worker 1: [ 0, 1 ]
+            sum(x[i, 1] * vm_resources[i] for i in [ 0, 1 ])
+            <= 1
+        )
+
+
+        # m[j] = 1 if machine hosts any VM
+        m = {}
+        m[0] = solver.BoolVar("m_0")
+        solver.Add(m[0] ==
+                   sum([x[0, 0]])
+        )
+        m[1] = solver.BoolVar("m_1")
+        solver.Add(m[1] ==
+                   sum([x[0, 1], x[1, 1]])
+        )
+
+        # even our trivial scheduler needs less than 150k machines
+        totalMachines = solver.IntVar(0, 150_000, "totalMachines")
+        solver.Add(totalMachines == m[0] + m[1])
+
+        objective = solver.Objective()
+
+        #  Objective is to maximize the cpu resources usage
+        # objective.SetCoefficient(x[0, 0], vm_resources[0])
+        # objective.SetCoefficient(x[0, 1], vm_resources[0])
+        # objective.SetCoefficient(x[1, 1], vm_resources[1])
+        # objective.SetMaximization()
+
+        #  Objective is to minimize number of machines
+        # objective.SetCoefficient(m[0], 1)
+        # objective.SetCoefficient(m[1], 1)
+        objective.SetMinimization()
+        objective.SetCoefficient(totalMachines, 1)
+
+        status = solver.Solve()
+        print(f"solution: {status}")
+        if status == pywraplp.Solver.OPTIMAL:
+            print(f"x_0_0 {x[0, 0].solution_value()}")
+            print(f"x_0_1 {x[0, 1].solution_value()}")
+            print(f"x_1_1 {x[1, 1].solution_value()}")
+            print(f"m_0 {m[0].solution_value()}")
+            print(f"m_1 {m[1].solution_value()}")
+
+        breakpoint()
+        pass
+
+
 def main():
     parser = setup_parser()
     args = parse_args(parser)
@@ -501,7 +586,8 @@ def main():
 
     log("Simulating")
     checkpoint_basename = f"{args.output}.checkpoint"
-    scheduler = Scheduler(fragmented=args.fragmented, find_bottlenecks=args.bottlenecks, checkpoint_basename=checkpoint_basename)
+    # scheduler = Scheduler(fragmented=args.fragmented, find_bottlenecks=args.bottlenecks, checkpoint_basename=checkpoint_basename)
+    scheduler = OptimalScheduler()
     if args.restore is not None:
         scheduler.restore(args.restore)
         scheduler.checkpoint_basename = checkpoint_basename

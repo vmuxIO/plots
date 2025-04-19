@@ -11,6 +11,7 @@ import argparse
 from enum import Enum
 from math import nan as NaN
 from ortools.linear_solver import pywraplp
+import time
 
 def log(msg):
     print(msg, flush=True)
@@ -29,6 +30,11 @@ def setup_parser():
                         '--bottlenecks',
                         action='store_true',
                         help='Measure bottlenecking resources (insanely slow)',
+                        )
+    parser.add_argument('-p',
+                        '--optimal',
+                        action='store_true',
+                        help='Use optimal scheduler',
                         )
     # parser.add_argument('-W', '--width',
     #                     type=float,
@@ -385,7 +391,7 @@ class Scheduler():
 
 
     def dump(self):
-        print("Machines:")
+        print(f"{self.pool_size()} Machines:")
         for machineId, machines in self.machine_types.items():
             for machine in machines:
                 print(f" - Machine type {machineId}:")
@@ -490,7 +496,7 @@ class Scheduler():
         return df
 
 
-class OptimalScheduler():
+class OptimalScheduler2():
     def __init__(self):
         pass
 
@@ -584,22 +590,147 @@ class OptimalScheduler():
         pass
 
 
+class OptimalScheduler():
+    def __init__(self):
+        pass
+
+    def simulate(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame):
+        self.sample(vm_requests, vm_types, -7157)
+        pass
+
+    def sample(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, time: int):
+        # active_mask = (vm_requests['starttime'] <= time) & ((vm_requests['endtime'].isnull()) | (vm_requests['endtime'] >= time))
+        # active_vms = vm_requests[active_mask]
+
+        active_vms = vm_requests.head(100)
+
+        self.solve(active_vms, vm_types)
+
+        pass
+
+    def solve(self, active_vms: pd.DataFrame, vm_types: pd.DataFrame):
+        start = time.time()
+        # Create the mip solver with the SCIP backend.
+        solver = pywraplp.Solver.CreateSolver("SCIP")
+        assert solver is not None
+
+        max_instances_per_type = 10
+        machine_capacity = 1
+
+        # Variables
+
+        log("Creating x_i_t_j")
+        # x[i, t, j] = 1 if VM i is packed in machine j of machine type t.
+        x = {}
+        for _vm_idx, vm in tqdm(active_vms.iterrows(), total=len(active_vms)):
+            i = vm["vmId"]
+            machine_type_candidates = vm_types[vm_types["vmTypeId"] == vm["vmTypeId"]]
+            for _type_idx, machine_type_candidate in machine_type_candidates.iterrows():
+                t = machine_type_candidate["machineId"]
+                for j in range(max_instances_per_type):
+                    x[(i, t, j)] = solver.IntVar(0, 1, f"x_{i}_{t}_{j}")
+        log(f"  len(x_i_t_j) = {len(x.values())}")
+
+        log("Creating y_t_j")
+        # y[t, j] = 1 if machine j of type t is used.
+        y = {}
+        for _type_idx, machine_types in vm_types.iterrows():
+            t = machine_types["machineId"]
+            for j in range(max_instances_per_type):
+                y[t, j] = solver.IntVar(0, 1, f"y_{t}_{j}")
+        log(f"  len(y_t_j) = {len(y.values())}")
+
+        # Constraints
+
+        # Each VM must be in exactly one machine.
+        log("Constraining for all VMs i, sum(x_i_t_j) == 1")
+        for _vm_idx, vm in active_vms.iterrows():
+            relevant_x = [] # all x[i, t, j] for this VM
+
+            i = vm["vmId"]
+            machine_type_candidates = vm_types[vm_types["vmTypeId"] == vm["vmTypeId"]]
+            for _type_idx, machine_type_candidate in machine_type_candidates.iterrows():
+                t = machine_type_candidate["machineId"]
+                for j in range(max_instances_per_type):
+                    relevant_x += [x[i, t, j]]
+
+            solver.Add(sum(relevant_x) == 1)
+
+        # The amount packed in each bin cannot exceed its capacity.
+        log("Constraining for all VMs i, sum(x_i_t_j * core_i_t) <= y_t_j * machine_capacity")
+        for _vm_idx, vm in tqdm(active_vms.iterrows(), total=len(active_vms)):
+            relevant_scaled_x = []
+
+            i = vm["vmId"]
+            machine_type_candidates = vm_types[vm_types["vmTypeId"] == vm["vmTypeId"]]
+            for _type_idx, machine_type_candidate in machine_type_candidates.iterrows():
+                t = machine_type_candidate["machineId"]
+                for j in range(max_instances_per_type):
+                    relevant_scaled_x += [ x[i, t, j] * machine_type_candidate["core"] ]
+
+            for _type_idx, machine_type_candidate in machine_type_candidates.iterrows():
+                t = machine_type_candidate["machineId"]
+                for j in range(max_instances_per_type):
+                    solver.Add(
+                        sum(relevant_scaled_x)
+                        <= y[t, j] * machine_capacity
+                    )
+
+        # Objective: minimize the number of machines used.
+        # minimize: sum(y_t_j)
+        solver.Minimize(solver.Sum(y.values()))
+
+        start_solve = time.time()
+        print(f"Solving with {solver.SolverVersion()}")
+        status = solver.Solve()
+
+        match status:
+            case pywraplp.Solver.OPTIMAL:
+                print("Optimal solution found")
+            case pywraplp.Solver.FEASIBLE:
+                print("Solution feasible, or stopped by limit")
+            case pywraplp.Solver.INFEASIBLE:
+                print("Proven infeasible")
+            case pywraplp.Solver.UNBOUNDED:
+                print("Proven unbounded")
+            case pywraplp.Solver.ABNORMAL:
+                print("Abnormal error of some kind")
+            case pywraplp.Solver.NOT_SOLVED:
+                print("Not solved")
+            case _:
+                assert False, "Unknown solver status"
+
+        if status == pywraplp.Solver.OPTIMAL:
+            num_machines = 0
+            for (t, j), y_t_j in y.items():
+                if y_t_j.solution_value() == 1:
+                    print(f" - y_{t}_{j}")
+                    num_machines += 1
+            print(f"Number of machines used: {num_machines}")
+
+        log(f"{(start_solve - start)/60:.1f} minutes to setup, {(time.time() - start_solve)/60:.1f} minutes to solve")
+
+        breakpoint()
+        pass
+
+
 def main():
     parser = setup_parser()
     args = parse_args(parser)
     print(args)
 
-    # vm_requests, vm_types = load_data(args.input)
-    #
-    # log("Ranking NICs")
-    # vm_types = rank_machine_types(vm_types)
-    vm_requests = []
-    vm_types = []
+    vm_requests, vm_types = load_data(args.input)
+    vm_requests = vm_requests.head(10)
+
+    log("Ranking NICs")
+    vm_types = rank_machine_types(vm_types)
 
     log("Simulating")
     checkpoint_basename = f"{args.output}.checkpoint"
-    # scheduler = Scheduler(fragmented=args.fragmented, find_bottlenecks=args.bottlenecks, checkpoint_basename=checkpoint_basename)
-    scheduler = OptimalScheduler()
+    if args.optimal:
+        scheduler = OptimalScheduler()
+    else:
+        scheduler = Scheduler(fragmented=args.fragmented, find_bottlenecks=args.bottlenecks, checkpoint_basename=checkpoint_basename)
     if args.restore is not None:
         scheduler.restore(args.restore)
         scheduler.checkpoint_basename = checkpoint_basename
@@ -609,6 +740,8 @@ def main():
     scheduler.checkpoint(output=df)
     log(df["pool_size"].describe())
     df.to_pickle(f"{args.output}.pkl")
+    scheduler.dump()
+    breakpoint()
     log(f"Wrote output to {args.output}.pkl")
 
 

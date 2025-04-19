@@ -500,14 +500,14 @@ class OptimalScheduler():
         # see https://developers.google.com/optimization/lp/lp_advanced for ortools solvers (e.g. GLOP, Linerar optimization)
         # https://developers.google.com/optimization/mip/mip_example for a mention of SCIP (Integer optimization)
         # perhaps we could also consider bin-packing specific optimizers https://developers.google.com/optimization/pack/bin_packing
-        solver = pywraplp.Solver.CreateSolver("GLOP")
+        solver = pywraplp.Solver.CreateSolver("SAT")
         assert solver is not None
 
         workerIds = [ 0, 1 ]
         vm_resources = {
             # resources to be allocated for a VM
-            0: 0.4,
-            1: 0.5,
+            0: 400,
+            1: 500,
         }
 
         # x[i, b] = 1 if VM i is packed in machine b.
@@ -524,11 +524,11 @@ class OptimalScheduler():
         # The amount packed in each bin cannot exceed its capacity (1).
         solver.Add( # VMs that can run on worker 0: [ 0 ]
             sum(x[i, 0] * vm_resources[i] for i in [ 0 ])
-            <= 1
+            <= 1000
         )
         solver.Add( # VMs that can run on worker 1: [ 0, 1 ]
             sum(x[i, 1] * vm_resources[i] for i in [ 0, 1 ])
-            <= 1
+            <= 1000
         )
 
 
@@ -542,12 +542,17 @@ class OptimalScheduler():
         solver.Add(m[1] ==
                    sum([x[0, 1], x[1, 1]])
         )
+        # sum(x) - (sum(x) - 1) == 0 | 1
+        # sum(x) - sum(x) + 1) == 0 | 1
 
-        # even our trivial scheduler needs less than 150k machines
-        totalMachines = solver.IntVar(0, 150_000, "totalMachines")
-        solver.Add(totalMachines == m[0] + m[1])
+        # # even our trivial scheduler needs less than 150k machines
+        machines = solver.IntVar(0, 5, "machines")
+        solver.Add(machines == m[0] + m[1])
 
-        objective = solver.Objective()
+        utilization = solver.IntVar(0, 5, "utilization")
+        solver.Add(utilization == sum([ x[0, 0] * vm_resources[0], x[0, 1] * vm_resources[0], x[1, 1] * vm_resources[1] ]) )
+
+        # objective = solver.Objective()
 
         #  Objective is to maximize the cpu resources usage
         # objective.SetCoefficient(x[0, 0], vm_resources[0])
@@ -558,8 +563,11 @@ class OptimalScheduler():
         #  Objective is to minimize number of machines
         # objective.SetCoefficient(m[0], 1)
         # objective.SetCoefficient(m[1], 1)
-        objective.SetMinimization()
-        objective.SetCoefficient(totalMachines, 1)
+        # objective.SetMinimization()
+        # objective.SetCoefficient(totalMachines, 1)
+
+        solver.Minimize(machines)
+        # solver.Maximize(utilization)
 
         status = solver.Solve()
         print(f"solution: {status}")
@@ -567,8 +575,10 @@ class OptimalScheduler():
             print(f"x_0_0 {x[0, 0].solution_value()}")
             print(f"x_0_1 {x[0, 1].solution_value()}")
             print(f"x_1_1 {x[1, 1].solution_value()}")
-            print(f"m_0 {m[0].solution_value()}")
-            print(f"m_1 {m[1].solution_value()}")
+            # print(f"m_0 {m[0].solution_value()}")
+            # print(f"m_1 {m[1].solution_value()}")
+            print(f"util {utilization.solution_value()}")
+            print(f"machines {machines.solution_value()}")
 
         breakpoint()
         pass
@@ -579,10 +589,12 @@ def main():
     args = parse_args(parser)
     print(args)
 
-    vm_requests, vm_types = load_data(args.input)
-
-    log("Ranking NICs")
-    vm_types = rank_machine_types(vm_types)
+    # vm_requests, vm_types = load_data(args.input)
+    #
+    # log("Ranking NICs")
+    # vm_types = rank_machine_types(vm_types)
+    vm_requests = []
+    vm_types = []
 
     log("Simulating")
     checkpoint_basename = f"{args.output}.checkpoint"

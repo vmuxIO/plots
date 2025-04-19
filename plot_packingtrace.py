@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from typing import List, Any, Dict, Tuple
 from dataclasses import dataclass
 import argparse
+from math import nan as NaN
 
 def log(msg):
     print(msg, flush=True)
@@ -80,71 +81,162 @@ for color in COLORS:
 
 df = pd.concat(dfs, ignore_index=True)
 
+df = df[(df["time"] >= 0) & (df["time"] <= 14)]
 
 sns.set_theme()
 sns.set_style("whitegrid")
 
-fig = plt.figure(figsize=(args.width, args.height))
 
-df = df[(df["time"] >= 0) & (df["time"] <= 14)]
+def plot_poolsize(df):
+    fig = plt.figure(figsize=(args.width, args.height))
 
-
-breakpoint()
-
-log("plot packingtrace data")
-sns.lineplot(
-    data=df,
-    x="time",
-    y="pool_size",
-    hue="hue",
-    style="hue",
-    # label=f'{self._name}',
-    # color=self._line_color,
-    # linestyle=self._line,
-)
-plt.savefig(args.output.name)
-
-breakpoint()
+    placeholder = dict()
+    for colname in df.columns:
+        placeholder[colname] = [ NaN ]
+    placeholder["hue"] = [ "Total VMs" ]
+    df = pd.concat([pd.DataFrame(placeholder), df], ignore_index=True)
+    breakpoint()
 
 
-fig = plt.figure(figsize=(args.width, args.height))
+    log("plot packingtrace data")
+    g = sns.lineplot(
+        data=df,
+        x="time",
+        y="pool_size",
+        hue="hue",
+        style="hue",
+        # label=f'{self._name}',
+        # color=self._line_color,
+        # linestyle=self._line,
+    )
+    plt.savefig(args.output.name)
 
-log("cruching utilization data")
-dfs = []
-for resource in ["cores", "memory", "hdd", "ssd", "nic"]:
-    d = dict()
-    d["time"] = df["time"]
-    d["utilization"] = df[resource] / df["pool_size"]
-    d["stranding"] = 1 - (df[resource] / df["pool_size"])
-    d["resource"] = resource
-    d["hue"] = df["hue"]
-    dfs += [ pd.DataFrame(d) ]
-df = pd.concat(dfs, ignore_index=True)
+    return g
 
-breakpoint()
 
-g = sns.barplot(
-    data=df,
-    x="resource",
-    y="stranding",
-    hue="hue",
-    # label=f'{self._name}',
-    # color=self._line_color,
-    # linestyle=self._line,
-)
+def add_nr_vms_plot(g_poolsize):
+    ax = g_poolsize.twinx()
 
-# df = df[df["hue"] == "Unified"]
-#
-# log("plot utilization data")
-# g = sns.lineplot(
-#     data=df,
-#     x="time",
-#     y="stranding",
-#     hue="resource",
-#     style="resource",
-#     # label=f'{self._name}',
-#     # color=self._line_color,
-#     # linestyle=self._line,
-# )
-g.set(ylim=(0, 1))
-plt.savefig(f"{args.output.name}.utilization.pdf")
+    # Connect to the database
+    log("Reading db")
+    conn = sqlite3.connect('../packing_trace_zone_a_v1.sqlite')
+
+    # Load VM requests
+
+    log("Creating df")
+    vm_df = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime FROM vm", conn)
+
+    # Generate day range (0 to 14 for the 14-day period)
+    days = range(150)  # 0-14 inclusive
+
+    # Initialize results storage
+    results_by_type = []
+    active_counts = []
+    times = []
+
+
+    log("Parsing")
+    # For each day, count active VMs by type
+    for day in tqdm(days):
+        day = float(day)/10.0
+        # A VM is active if day >= starttime AND (endtime is NULL OR day <= endtime)
+        active_mask = (vm_df['starttime'] <= day) & ((vm_df['endtime'].isnull()) | (vm_df['endtime'] >= day))
+        active_vms = vm_df[active_mask]
+
+        # Group by VM type and count
+        type_counts = active_vms.groupby('vmTypeId').size().reset_index()
+        type_counts.columns = ['vmTypeId', 'active_count']
+        type_counts['day'] = day
+
+        # only take the most common types
+        n = 10
+        type_counts = type_counts.sort_values("active_count", ascending=False).head(n)
+
+        results_by_type.append(type_counts)
+        active_counts += [ len(active_vms) ]
+        times += [ day ]
+
+    # Combine all results
+    # df = pd.concat(results_by_type)
+    df = pd.DataFrame({ 'day': times, 'active_count': active_counts })
+
+    breakpoint()
+
+    plot = sns.lineplot(
+        data=df,
+        # x=bin_edges[1:],
+        # y=cdf,
+        x = "day",
+        y = "active_count",
+        # hue = "vmTypeId",
+        # style = "vmTypeId",
+        # label=f'{self._name}',
+        # color=self._line_color,
+        # linestyle=self._line,
+        # linewidth=1,
+        markers=True,
+        # errorbar='ci',
+        # markers=[ 'X' ],
+        # markeredgecolor='black',
+        # markersize=60,
+        # markeredgewidth=1,
+        ax=ax,
+    )
+    plt.savefig(args.output.name)
+
+
+
+def plot_utilization(df):
+    breakpoint()
+
+    fig = plt.figure(figsize=(args.width, args.height))
+
+    log("cruching utilization data")
+    dfs = []
+    for resource in ["cores", "memory", "hdd", "ssd", "nic"]:
+        d = dict()
+        d["time"] = df["time"]
+        d["utilization"] = df[resource] / df["pool_size"]
+        d["stranding"] = 1 - (df[resource] / df["pool_size"])
+        d["resource"] = resource
+        d["hue"] = df["hue"]
+        dfs += [ pd.DataFrame(d) ]
+    df = pd.concat(dfs, ignore_index=True)
+
+    breakpoint()
+
+    log("plotting utilization data")
+    log("(takes >30GB RAM and a few minutes)")
+    g = sns.barplot(
+        data=df,
+        x="resource",
+        y="stranding",
+        hue="hue",
+        # label=f'{self._name}',
+        # color=self._line_color,
+        # linestyle=self._line,
+    )
+
+    # df = df[df["hue"] == "Unified"]
+    #
+    # log("plot utilization data")
+    # g = sns.lineplot(
+    #     data=df,
+    #     x="time",
+    #     y="stranding",
+    #     hue="resource",
+    #     style="resource",
+    #     # label=f'{self._name}',
+    #     # color=self._line_color,
+    #     # linestyle=self._line,
+    # )
+    g.set(ylim=(0, 1))
+    plt.savefig(f"{args.output.name}.utilization.pdf")
+
+
+
+g1 = plot_poolsize(df)
+add_nr_vms_plot(g1)
+# plot_utilization(df)
+
+

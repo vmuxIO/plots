@@ -19,12 +19,7 @@ all: $(PAPER_FIGURES)
 install:
 	test -n "$(OVERLEAF)" # OVERLEAF must be set
 	for f in $(PAPER_FIGURES); do test -f $(OUT_DIR)/$$f && cp $(OUT_DIR)/$$f $(OVERLEAF)/$$f || true; done
-	# cp ycsb.pdf $(OVERLEAF)/ycsb.pdf
-	# cp microservices.pdf $(OVERLEAF)/microservices.pdf
-	# cp iperf.pdf $(OVERLEAF)/iperf.pdf
-	# cp mediation.pdf $(OVERLEAF)/mediation.pdf
-	# cp microbenchmark-cdf.pdf $(OVERLEAF)/microbenchmark-cdf.pdf
-	# cp microbenchmark-bars.pdf $(OVERLEAF)/microbenchmark-bars.pdf
+	test -f $(OUT_DIR)/packingtrace_stranding.pdf && cp $(OUT_DIR)/packingtrace_stranding.pdf $(OVERLEAF)/packingtrace_stranding.pdf || true
 
 packingtrace.pdf: $(wildcard ../dat/packingtrace/*) ../plot_packingtrace.py
 	python3 ../plot_packingtrace.py -o $(OUT_DIR)/packingtrace.pdf \

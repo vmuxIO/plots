@@ -209,7 +209,6 @@ def add_nr_vms_plot():
 
 
 def plot_utilization(df):
-    breakpoint()
 
     fig = plt.figure(figsize=(args.width, args.height))
 
@@ -232,7 +231,7 @@ def plot_utilization(df):
         d["Pool"] = df["hue"]
         dfs += [ pd.DataFrame(d) ]
     df = pd.concat(dfs, ignore_index=True)
-    df = df[df["resource"] != "hdd"]
+    df = df[df["resource"] != "HDD"]
 
     log("plotting utilization data")
     log("(takes >30GB RAM and a few minutes)")
@@ -245,7 +244,8 @@ def plot_utilization(df):
         # color=self._line_color,
         # linestyle=self._line,
     )
-    g.set_ylabel("Resource stranding [%]")
+    g.set_ylabel("Resource stranding [%]    ")
+    g.set_xlabel("Resource")
 
     # df = df[df["hue"] == "Unified"]
     #
@@ -260,9 +260,9 @@ def plot_utilization(df):
     #     # color=self._line_color,
     #     # linestyle=self._line,
     # )
-    g.set(ylim=(0, 1))
+    g.set(ylim=(0, 100))
     plt.tight_layout(pad=0.1)
-    plt.savefig(f"{args.output.name}.pdf")
+    plt.savefig(f"{args.output.name}")
 
 
 if not args.utilization:

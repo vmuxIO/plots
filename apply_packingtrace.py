@@ -659,20 +659,41 @@ class OptimalScheduler():
         # The amount packed in each bin cannot exceed its capacity.
         log("Constraining for all VMs i, sum(x_i_t_j * core_i_t) <= y_t_j * machine_capacity")
         for _vm_idx, vm in tqdm(active_vms.iterrows(), total=len(active_vms)):
-            relevant_scaled_x = []
+            relevant_core_sum = []
+            relevant_memory_sum = []
+            relevant_ssd_sum = []
+            relevant_nic_sum = []
+            # we ignore hdd because it matters so little, the data is even missing often
 
+            # collect sum(*) into relevant_core_sum
             i = vm["vmId"]
             machine_type_candidates = vm_types[vm_types["vmTypeId"] == vm["vmTypeId"]]
             for _type_idx, machine_type_candidate in machine_type_candidates.iterrows():
                 t = machine_type_candidate["machineId"]
                 for j in range(max_instances_per_type):
-                    relevant_scaled_x += [ x[i, t, j] * machine_type_candidate["core"] ]
+                    relevant_core_sum += [ x[i, t, j] * machine_type_candidate["core"] ]
+                    relevant_memory_sum += [ x[i, t, j] * machine_type_candidate["memory"] ]
+                    relevant_ssd_sum += [ x[i, t, j] * machine_type_candidate["ssd"] ]
+                    relevant_nic_sum += [ x[i, t, j] * machine_type_candidate["nic"] ]
 
+            # add contstraints using sum(*)
             for _type_idx, machine_type_candidate in machine_type_candidates.iterrows():
                 t = machine_type_candidate["machineId"]
                 for j in range(max_instances_per_type):
                     solver.Add(
-                        sum(relevant_scaled_x)
+                        sum(relevant_core_sum)
+                        <= y[t, j] * machine_capacity
+                    )
+                    solver.Add(
+                        sum(relevant_memory_sum)
+                        <= y[t, j] * machine_capacity
+                    )
+                    solver.Add(
+                        sum(relevant_ssd_sum)
+                        <= y[t, j] * machine_capacity
+                    )
+                    solver.Add(
+                        sum(relevant_nic_sum)
                         <= y[t, j] * machine_capacity
                     )
 
@@ -703,6 +724,7 @@ class OptimalScheduler():
         if status == pywraplp.Solver.OPTIMAL:
             print("Machines:")
             num_machines = 0
+            num_vms = 0
             for (t, j), y_t_j in y.items():
                 if y_t_j.solution_value() == 1:
                     vms = []
@@ -715,8 +737,10 @@ class OptimalScheduler():
                             core_usage += vm_types[vm_types["machineId"] == t].iloc[0]["core"]
                     if vms:
                         num_machines += 1
+                        num_vms += len(vms)
                         print(f" - Machine {j} of type {t}, {len(vms)} VMs, core usage {core_usage}")
             print(f"Number of machines used: {num_machines}")
+            print(f"Number of VMs: {num_vms}")
 
             # print("VMs:")
             # num_vms = 0
@@ -738,7 +762,7 @@ def main():
     print(args)
 
     vm_requests, vm_types = load_data(args.input)
-    vm_requests = vm_requests.head(10)
+    vm_requests = vm_requests.head(100)
 
     log("Ranking NICs")
     vm_types = rank_machine_types(vm_types)

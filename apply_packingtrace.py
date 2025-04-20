@@ -12,6 +12,9 @@ from enum import Enum
 from math import nan as NaN
 from ortools.linear_solver import pywraplp
 import time
+import cProfile
+import pstats
+import io
 
 def log(msg):
     print(msg, flush=True)
@@ -200,11 +203,20 @@ class Machine():
     nic: float = 0
 
     def start_vm(self, vm: VM, machine_type: pd.Series) -> StartResult:
-        _core = self.core + machine_type["core"]
-        _memory = self.memory + machine_type["memory"]
-        _hdd = self.hdd + machine_type["hdd"]
-        _ssd = self.ssd + machine_type["ssd"]
-        _nic = self.nic + machine_type["nic"]
+        return self.start_vm2(vm,
+                              machine_type["core"],
+                              machine_type["memory"],
+                              machine_type["hdd"],
+                              machine_type["ssd"],
+                              machine_type["nic"]
+        )
+
+    def start_vm2(self, vm: VM, core: float, memory: float, hdd: float, ssd: float, nic: float) -> StartResult:
+        _core = self.core + core
+        _memory = self.memory + memory
+        _hdd = self.hdd + hdd
+        _ssd = self.ssd + ssd
+        _nic = self.nic + nic
         if _core > 1:
             return StartResult.CoreBottleneck
         if _memory > 1:
@@ -555,7 +567,17 @@ class MigratingScheduler(Scheduler):
 
         # for index, row in tqdm(vm_requests.iterrows(), total=len(vm_requests)):
         for index, row in tqdm(sorted_vms.iterrows(), total=len(sorted_vms)):
+            if (int(index)%1000) == 0:
+                pr = cProfile.Profile()
+                pr.enable()
             self.schedule2(row)
+            if (int(index)%1000) == 0:
+                pr.disable()
+                s = io.StringIO()
+                sortby = pstats.SortKey.CUMULATIVE
+                ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+                ps.print_stats()
+                print(s.getvalue())
 
             # if checkpoint_interval is not None and int(index) % checkpoint_interval == 0:
             #     self.iteration = int(index)
@@ -626,7 +648,12 @@ class MigratingScheduler(Scheduler):
         ssd_bottlenecks = 0
         nic_bottlenecks = 0
 
-        machineType = joined_vm["machineId"]
+        machineType = float(joined_vm["machineId"])
+        core = float(joined_vm["core"])
+        memory = float(joined_vm["memory"])
+        hdd = float(joined_vm["hdd"])
+        ssd = float(joined_vm["ssd"])
+        nic = float(joined_vm["nic"])
 
         # bookkeeping
         self.machine_types[machineType] = self.machine_types.get(machineType, [])
@@ -643,7 +670,7 @@ class MigratingScheduler(Scheduler):
             iterator = range(len(machines) - 1, 0, -1) # backwards
         for i in iterator:
             machine = machines[i]
-            started = machine.start_vm(vm, joined_vm)
+            started = machine.start_vm2(vm, core, memory, hdd, ssd, nic)
             if self.find_bottlenecks:
                 if started == StartResult.CoreBottleneck:
                     core_bottlenecks += 1
@@ -662,7 +689,7 @@ class MigratingScheduler(Scheduler):
         # create new machine if necessary
         if started is None or started != StartResult.Ok:
             machines.append(Machine(machineId=machineType, vms=[]))
-            started = machines[-1].start_vm(vm, joined_vm)
+            started = machines[-1].start_vm2(vm, joined_vm)
             machine_idx = len(machines) - 1
         assert started == StartResult.Ok
 

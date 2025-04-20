@@ -689,7 +689,7 @@ class MigratingScheduler(Scheduler):
         # create new machine if necessary
         if started is None or started != StartResult.Ok:
             machines.append(Machine(machineId=machineType, vms=[]))
-            started = machines[-1].start_vm2(vm, joined_vm)
+            started = machines[-1].start_vm2(vm, core, memory, hdd, ssd, nic)
             machine_idx = len(machines) - 1
         assert started == StartResult.Ok
 

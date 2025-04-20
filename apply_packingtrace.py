@@ -36,6 +36,11 @@ def setup_parser():
                         action='store_true',
                         help='Use optimal scheduler',
                         )
+    parser.add_argument('-m',
+                        '--migrate',
+                        action='store_true',
+                        help='Consider VM migration while scheduling',
+                        )
     # parser.add_argument('-W', '--width',
     #                     type=float,
     #                     default=12,
@@ -148,7 +153,7 @@ def fragment_pool(vm_types: pd.DataFrame) -> pd.DataFrame:
     return vm_types
 
 
-def load_data(sqlite_file: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def load_data(sqlite_file: str, no_timeline: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
     # Connect to the database
     conn = sqlite3.connect(sqlite_file)
 
@@ -158,8 +163,11 @@ def load_data(sqlite_file: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     vm_types = pd.read_sql_query("SELECT vmTypeId, machineId, core, memory, hdd, ssd, nic FROM vmType", conn)
 
     a = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, starttime as time_sorter FROM vm", conn)
-    b = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, endtime as time_sorter FROM vm", conn)
-    vm_requests = pd.concat([a, b]).sort_values("time_sorter", ignore_index=True) # one line/event for each start and end of a VM
+    if not no_timeline:
+        b = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, endtime as time_sorter FROM vm", conn)
+        vm_requests = pd.concat([a, b]).sort_values("time_sorter", ignore_index=True) # one line/event for each start and end of a VM
+    else:
+        vm_requests = a
     # vm_requests = vm_requests.head(100_000)
 
     return vm_requests, vm_types
@@ -496,6 +504,192 @@ class Scheduler():
         return df
 
 
+class MigratingScheduler(Scheduler):
+    def __init__(self, fragmented: bool = False, find_bottlenecks: bool = False, checkpoint_basename: str = "/tmp/checkpoint"):
+        super().__init__(fragmented=fragmented, find_bottlenecks=find_bottlenecks, checkpoint_basename=checkpoint_basename)
+
+
+    def simulate(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, checkpoint_interval: int | None = None) -> pd.DataFrame:
+        samples = []
+        samples += [ self.sample(vm_requests, vm_types, -7157) ]
+
+        return pd.concat(samples)
+
+
+    def sample(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, time: int) -> pd.DataFrame:
+        # active_mask = (vm_requests['starttime'] <= time) & ((vm_requests['endtime'].isnull()) | (vm_requests['endtime'] >= time))
+        # active_vms = vm_requests[active_mask]
+
+        active_vms = vm_requests
+
+        df = self.solve(active_vms, vm_types)
+        df["time"] = time
+
+        return df
+
+
+    def solve(self, active_vms: pd.DataFrame, vm_types: pd.DataFrame) -> pd.DataFrame:
+        # sort VMs by size. Place the biggest ones first.
+
+        canidate_types = vm_types.drop_duplicates(subset="vmTypeId", keep="first")
+        join = pd.merge(active_vms, canidate_types, on="vmTypeId", how="left")
+        sorted = join.sort_values(["core", "memory", "nic"], ascending=False, ignore_index=True)
+
+        return self._simulate(sorted)
+
+
+    def _simulate(self, sorted_vms: pd.DataFrame) -> pd.DataFrame:
+        time_series_pool_size = []
+        time_series_cores = []
+        time_series_memory = []
+        time_series_hdd = []
+        time_series_ssd = []
+        time_series_nic = []
+        time_series_core_bottleneck = []
+        time_series_memory_bottleneck = []
+        time_series_hdd_bottleneck = []
+        time_series_ssd_bottleneck = []
+        time_series_nic_bottleneck = []
+
+        # for index, row in tqdm(vm_requests.iterrows(), total=len(vm_requests)):
+        for index, row in tqdm(sorted_vms.iterrows(), total=len(sorted_vms)):
+            self.schedule2(row)
+
+            # if checkpoint_interval is not None and int(index) % checkpoint_interval == 0:
+            #     self.iteration = int(index)
+            #     df = pd.DataFrame({
+            #         "time": time_series_time,
+            #         "pool_size": time_series_pool_size,
+            #         "cores": time_series_cores,
+            #         "memory": time_series_memory,
+            #         "hdd": time_series_hdd,
+            #         "ssd": time_series_ssd,
+            #         "nic": time_series_nic,
+            #         "core_bottleneck": time_series_core_bottleneck,
+            #         "memory_bottleneck": time_series_memory_bottleneck,
+            #         "hdd_bottleneck": time_series_hdd_bottleneck,
+            #         "ssd_bottleneck": time_series_ssd_bottleneck,
+            #         "nic_bottleneck": time_series_nic_bottleneck,
+            #     })
+            #     self.checkpoint(output=df)
+
+        time_series_pool_size += [self.pool_size()]
+        # cluster usage (1-stranding) statistics
+        time_series_cores += [ self.cores ]
+        time_series_memory += [ self.memory ]
+        time_series_hdd += [ self.hdd ]
+        time_series_ssd += [ self.ssd ]
+        time_series_nic += [ self.nic ]
+        # scheduler bottleneck statistics
+        if self.find_bottlenecks:
+            time_series_core_bottleneck += [sum(self.core_bottleneck_f) / len(self.core_bottleneck_f)]
+            time_series_memory_bottleneck += [sum(self.memory_bottleneck_f) / len(self.memory_bottleneck_f)]
+            time_series_hdd_bottleneck += [sum(self.hdd_bottleneck_f) / len(self.hdd_bottleneck_f)]
+            time_series_ssd_bottleneck += [sum(self.ssd_bottleneck_f) / len(self.ssd_bottleneck_f)]
+            time_series_nic_bottleneck += [sum(self.nic_bottleneck_f) / len(self.nic_bottleneck_f)]
+            self.core_bottleneck_f.clear()
+            self.memory_bottleneck_f.clear()
+            self.hdd_bottleneck_f.clear()
+            self.ssd_bottleneck_f.clear()
+            self.nic_bottleneck_f.clear()
+        else:
+            time_series_core_bottleneck += [NaN]
+            time_series_memory_bottleneck += [NaN]
+            time_series_hdd_bottleneck += [NaN]
+            time_series_ssd_bottleneck += [NaN]
+            time_series_nic_bottleneck += [NaN]
+
+        df = pd.DataFrame({
+            # "time": time_series_time,
+            "pool_size": time_series_pool_size,
+            "cores": time_series_cores,
+            "memory": time_series_memory,
+            "hdd": time_series_hdd,
+            "ssd": time_series_ssd,
+            "nic": time_series_nic,
+            "core_bottleneck": time_series_core_bottleneck,
+            "memory_bottleneck": time_series_memory_bottleneck,
+            "hdd_bottleneck": time_series_hdd_bottleneck,
+            "ssd_bottleneck": time_series_ssd_bottleneck,
+            "nic_bottleneck": time_series_nic_bottleneck,
+            "fragmented": self.fragmented,
+        })
+        return df
+
+
+    def schedule2(self, joined_vm: pd.Series):
+        core_bottlenecks = 0
+        memory_bottlenecks = 0
+        hdd_bottlenecks = 0
+        ssd_bottlenecks = 0
+        nic_bottlenecks = 0
+
+        machineType = joined_vm["machineId"]
+
+        # bookkeeping
+        self.machine_types[machineType] = self.machine_types.get(machineType, [])
+        machines = self.machine_types[machineType]
+        vm = VM(vmId=joined_vm["vmId"], vmTypeId=joined_vm["vmTypeId"])
+        started = None
+        machine_idx = None
+        if self.find_bottlenecks:
+            iterator = range(len(machines)) # forwards
+            # TODO we also need to remove the `break` from the loop below, so that we
+            # check bottlenecks on all machines (instead of only the ones we try until
+            # we find a free one).
+        else:
+            iterator = range(len(machines) - 1, 0, -1) # backwards
+        for i in iterator:
+            machine = machines[i]
+            started = machine.start_vm(vm, joined_vm)
+            if self.find_bottlenecks:
+                if started == StartResult.CoreBottleneck:
+                    core_bottlenecks += 1
+                if started == StartResult.MemoryBottleneck:
+                    memory_bottlenecks += 1
+                if started == StartResult.HddBottleneck:
+                    hdd_bottlenecks += 1
+                if started == StartResult.SsdBottleneck:
+                    ssd_bottlenecks += 1
+                if started == StartResult.NicBottleneck:
+                    nic_bottlenecks += 1
+            if started == StartResult.Ok:
+                machine_idx = i
+                break
+
+        # create new machine if necessary
+        if started is None or started != StartResult.Ok:
+            machines.append(Machine(machineId=machineType, vms=[]))
+            started = machines[-1].start_vm(vm, joined_vm)
+            machine_idx = len(machines) - 1
+        assert started == StartResult.Ok
+
+        # collect bottleneck statistics
+        if self.find_bottlenecks:
+            total_bottlenecks = core_bottlenecks + memory_bottlenecks + hdd_bottlenecks + ssd_bottlenecks + nic_bottlenecks
+            if total_bottlenecks > 0:
+                self.core_bottleneck_f += [core_bottlenecks / total_bottlenecks]
+                self.memory_bottleneck_f += [memory_bottlenecks / total_bottlenecks]
+                self.hdd_bottleneck_f += [hdd_bottlenecks / total_bottlenecks]
+                self.ssd_bottleneck_f += [ssd_bottlenecks / total_bottlenecks]
+                self.nic_bottleneck_f += [nic_bottlenecks / total_bottlenecks]
+            else:
+                self.core_bottleneck_f += [0]
+                self.memory_bottleneck_f += [0]
+                self.hdd_bottleneck_f += [0]
+                self.ssd_bottleneck_f += [0]
+                self.nic_bottleneck_f += [0]
+
+        self.cores += joined_vm["core"]
+        self.memory += joined_vm["memory"]
+        self.hdd += joined_vm["hdd"]
+        self.ssd += joined_vm["ssd"]
+        self.nic += joined_vm["nic"]
+
+        self.vmId_to_machine[vm.vmId] = (machineType, machine_idx)
+        # machines[vm_request["vmTypeId"]]
+
+
 class OptimalScheduler2():
     def __init__(self):
         pass
@@ -777,6 +971,8 @@ def main():
     checkpoint_basename = f"{args.output}.checkpoint"
     if args.optimal:
         scheduler = OptimalScheduler()
+    elif args.migrate:
+        scheduler = MigratingScheduler(fragmented=args.fragmented, find_bottlenecks=args.bottlenecks, checkpoint_basename=checkpoint_basename)
     else:
         scheduler = Scheduler(fragmented=args.fragmented, find_bottlenecks=args.bottlenecks, checkpoint_basename=checkpoint_basename)
     if args.restore is not None:

@@ -370,6 +370,12 @@ class Scheduler():
         else:
             optimal_type = machine_type_candidates.iloc[0]
 
+        core = float(optimal_type["core"])
+        memory = float(optimal_type["memory"])
+        hdd = float(optimal_type["hdd"])
+        ssd = float(optimal_type["ssd"])
+        nic = float(optimal_type["nic"])
+
         # bookkeeping
         self.machine_types[optimal_type["machineId"]] = self.machine_types.get(optimal_type["machineId"], [])
         machines = self.machine_types[optimal_type["machineId"]]
@@ -385,7 +391,7 @@ class Scheduler():
             iterator = range(len(machines) - 1, 0, -1) # backwards
         for i in iterator:
             machine = machines[i]
-            started = machine.start_vm(vm, optimal_type)
+            started = machine.start_vm2(vm, core, memory, hdd, ssd, nic)
             if self.find_bottlenecks:
                 if started == StartResult.CoreBottleneck:
                     core_bottlenecks += 1
@@ -404,7 +410,7 @@ class Scheduler():
         # create new machine if necessary
         if started is None or started != StartResult.Ok:
             machines.append(Machine(machineId=optimal_type["machineId"], vms=[]))
-            started = machines[-1].start_vm(vm, optimal_type)
+            started = machines[-1].start_vm2(vm, core, memory, hdd, ssd, nic)
             machine_idx = len(machines) - 1
         assert started == StartResult.Ok
 

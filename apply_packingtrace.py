@@ -1172,6 +1172,7 @@ class OptimalScheduler():
 
 
 def main():
+    start = time.time()
     parser = setup_parser()
     args = parse_args(parser)
     print(args)
@@ -1204,6 +1205,7 @@ def main():
     scheduler.dump()
     df.to_pickle(f"{args.output}.pkl")
     log(f"Wrote output to {args.output}.pkl")
+    log(f"Took {(time.time() - start)/60:.1f} minutes")
 
 
 if __name__ == "__main__":

@@ -17,6 +17,8 @@ import pstats
 import io
 import multiprocessing as mp
 from multiprocessing import Queue
+from queue import Empty as QueueEmpty
+import ctypes
 
 def log(msg):
     print(msg, flush=True)
@@ -565,8 +567,62 @@ class Scheduler():
         return df
 
 
+class FakeFile():
+    def __init__(self, shared_string):
+        self.buffer = "<empty>"
+        self.shared_string = shared_string
+
+    def write(self, msg: str):
+        self.buffer = msg
+
+    def flush(self):
+        self.shared_string.value = self.buffer.encode("utf-8")
+        # log(f"flush")
+        log(f"{self.buffer}")
+        # log(f"{self.shared_string.value}")
+        # self.shared_string.value = b"<foobar>"
+
+
+class Progress():
+    def __init__(self, process: int, shared_string):
+        self.process = process
+        self.shared_string = shared_string
+
+    def tqdm(self, iterable: Any, *args, **kwargs) -> Any:
+        return tqdm(iterable, *args, file=FakeFile(self.shared_string), ncols=50, mininterval=1, ascii=False, **kwargs)
+
+
+class ProgressCollector():
+    def __init__(self):
+        self.shared_strings = dict()
+
+    def new_progress(self, process: int) -> Any:
+        default_string = mp.Array('c', b"<Proc {process}                                                                                                                                                                          >")
+        progress = Progress(process, default_string)
+        self.shared_strings[process] = default_string
+        return progress
+
+    def print(self):
+        lines = ""
+        for process, shared_string in self.shared_strings.items():
+            string = self.shared_strings[0].value.decode('utf-8')
+            printable = ''.join(i for i in string if i.isprintable())
+            lines += f"P{process:3d} {printable}\n"
+        with open("/tmp/progress", "w") as f:
+            f.write(lines)
+
+    def test(self):
+        # for i in tqdm(range(3), total=3, file=FakeFile(), ncols=50, mininterval=1, ascii=False):
+        progress = Progress()
+        for i in progress.tqdm(range(3), total=3):
+            time.sleep(1)
+            pass
+
+
+
 class MigratingScheduler(Scheduler):
-    def __init__(self, fragmented: bool = False, find_bottlenecks: bool = False, checkpoint_basename: str = "/tmp/checkpoint"):
+    def __init__(self, progress: Progress | None = None, fragmented: bool = False, find_bottlenecks: bool = False, checkpoint_basename: str = "/tmp/checkpoint"):
+        self.progress = progress
         super().__init__(fragmented=fragmented, find_bottlenecks=find_bottlenecks, checkpoint_basename=checkpoint_basename)
 
 
@@ -579,13 +635,14 @@ class MigratingScheduler(Scheduler):
         num_cores = 4
         task_queue = Queue()
         result_queue = Queue()
+        progress = ProgressCollector()
         # next_time_sample = adaptive_sampler(0, 14)
         # max_samples = 14 * 24 * 60 # once a minute for 14 days
         next_time_sample = adaptive_sampler(-1400, -1200)
         max_samples = 10
 
 
-        def process_task(task_queue, result_queue):
+        def process_task(task_queue, result_queue, progress):
             """Worker function to process tasks from the queue"""
             proc_name = mp.current_process().name
             while True:
@@ -601,7 +658,7 @@ class MigratingScheduler(Scheduler):
                 # Process the task
                 print(f"{proc_name} processing time: {sample_time}")
                 # each task needs to use its own fresh Scheduler state
-                scheduler = MigratingScheduler(fragmented=self.fragmented, find_bottlenecks=self.find_bottlenecks, checkpoint_basename=self.checkpoint_basename)
+                scheduler = MigratingScheduler(progress=progress, fragmented=self.fragmented, find_bottlenecks=self.find_bottlenecks, checkpoint_basename=self.checkpoint_basename)
                 result = scheduler.sample(vm_requests, vm_types, sample_time)
                 # result = 1
                 # time.sleep(5)
@@ -610,7 +667,7 @@ class MigratingScheduler(Scheduler):
         # Create and start the worker processes
         processes = []
         for i in range(num_cores):
-            p = mp.Process(target=process_task, args=(task_queue, result_queue))
+            p = mp.Process(target=process_task, args=(task_queue, result_queue, progress.new_progress(process=i)))
             p.start()
             processes.append(p)
 
@@ -620,12 +677,17 @@ class MigratingScheduler(Scheduler):
 
         # Add more tasks until we have enough samples
         while len(samples) < max_samples:
-            task, result = result_queue.get()
-            samples += [ result ]
-            task_queue.put(next_time_sample())
-            df = pd.concat(samples)
-            df.to_pickle(f"{self.checkpoint_basename}.samples.pkl")
-            log(f"Written {len(samples)} samples to {self.checkpoint_basename}.samples.pkl")
+            try:
+                task, result = result_queue.get(timeout=1)
+            except QueueEmpty:
+                progress.print()
+            else:
+                progress.print()
+                samples += [ result ]
+                task_queue.put(next_time_sample())
+                df = pd.concat(samples)
+                df.to_pickle(f"{self.checkpoint_basename}.samples.pkl")
+                log(f"Written {len(samples)} samples to {self.checkpoint_basename}.samples.pkl")
 
 
         # Add termination sentinel so that processes can exit nicely
@@ -642,6 +704,7 @@ class MigratingScheduler(Scheduler):
         log(f"Sample at time {time}")
         active_mask = (vm_requests['starttime'] <= time) & ((vm_requests['endtime'].isnull()) | (vm_requests['endtime'] >= time))
         active_vms = vm_requests[active_mask]
+        log(f"Active VMs: {len(active_vms)}")
 
         # active_vms = vm_requests
 
@@ -675,7 +738,11 @@ class MigratingScheduler(Scheduler):
         time_series_nic_bottleneck = []
 
         # for index, row in tqdm(vm_requests.iterrows(), total=len(vm_requests)):
-        for index, row in tqdm(sorted_vms.iterrows(), total=len(sorted_vms)):
+        if self.progress is None:
+            iter = tqdm(sorted_vms.iterrows(), total=len(sorted_vms))
+        else:
+            iter = self.progress.tqdm(sorted_vms.iterrows(), total=len(sorted_vms))
+        for index, row in iter:
             # if (int(index)%1000) == 0:
             #     pr = cProfile.Profile()
             #     pr.enable()

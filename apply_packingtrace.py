@@ -517,10 +517,10 @@ class MigratingScheduler(Scheduler):
 
 
     def sample(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, time: int) -> pd.DataFrame:
-        # active_mask = (vm_requests['starttime'] <= time) & ((vm_requests['endtime'].isnull()) | (vm_requests['endtime'] >= time))
-        # active_vms = vm_requests[active_mask]
+        active_mask = (vm_requests['starttime'] <= time) & ((vm_requests['endtime'].isnull()) | (vm_requests['endtime'] >= time))
+        active_vms = vm_requests[active_mask]
 
-        active_vms = vm_requests
+        # active_vms = vm_requests
 
         df = self.solve(active_vms, vm_types)
         df["time"] = time
@@ -962,7 +962,7 @@ def main():
     print(args)
 
     vm_requests, vm_types = load_data(args.input)
-    vm_requests = vm_requests.head(1000)
+    # vm_requests = vm_requests.head(1000)
 
     log("Ranking NICs")
     vm_types = rank_machine_types(vm_types)
@@ -984,8 +984,6 @@ def main():
     scheduler.checkpoint(output=df)
     log(df["pool_size"].describe())
     df.to_pickle(f"{args.output}.pkl")
-    scheduler.dump()
-    breakpoint()
     log(f"Wrote output to {args.output}.pkl")
 
 

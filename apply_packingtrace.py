@@ -15,6 +15,8 @@ import time
 import cProfile
 import pstats
 import io
+import multiprocessing as mp
+from multiprocessing import Queue
 
 def log(msg):
     print(msg, flush=True)
@@ -174,6 +176,53 @@ def load_data(sqlite_file: str, no_timeline: bool = False) -> Tuple[pd.DataFrame
     # vm_requests = vm_requests.head(100_000)
 
     return vm_requests, vm_types
+
+
+def adaptive_sampler(start=0, end=14):
+    """
+    Creates a sampler that progressively refines the sampling resolution
+    while maintaining roughly equal spacing at any point if aborted.
+
+    Args:
+        start (float): The starting value of the range
+        end (float): The ending value of the range
+
+    Returns:
+        function: A function that returns the next sample when called
+    """
+    sampled_points = set()
+    # Start with endpoints and midpoint in the queue
+    points_to_sample = [start, end, (start + end) / 2]
+
+    def get_next_sample():
+        if not points_to_sample:
+            # Find the largest gap and add its midpoint
+            all_points = sorted(list(sampled_points))
+
+            if len(all_points) <= 1:
+                return None  # No more points to sample
+
+            # Find the largest gap
+            largest_gap = 0
+            gap_midpoint = None
+
+            for i in range(len(all_points) - 1):
+                gap = all_points[i+1] - all_points[i]
+                if gap > largest_gap:
+                    largest_gap = gap
+                    gap_midpoint = all_points[i] + gap / 2
+
+            if gap_midpoint is not None:
+                points_to_sample.append(gap_midpoint)
+
+        if not points_to_sample:
+            return None
+
+        next_point = points_to_sample.pop(0)
+        sampled_points.add(next_point)
+        return next_point
+
+    return get_next_sample
 
 
 class StartResult(Enum):
@@ -524,7 +573,67 @@ class MigratingScheduler(Scheduler):
     def simulate(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, checkpoint_interval: int | None = None) -> pd.DataFrame:
         samples = []
         # samples += [ self.sample(vm_requests, vm_types, -7157) ]
-        samples += [ self.sample(vm_requests, vm_types, 1) ]
+        # samples += [ self.sample(vm_requests, vm_types, 1) ]
+
+        # num_cores = mp.cpu_count()
+        num_cores = 4
+        task_queue = Queue()
+        result_queue = Queue()
+        # next_time_sample = adaptive_sampler(0, 14)
+        # max_samples = 14 * 24 * 60 # once a minute for 14 days
+        next_time_sample = adaptive_sampler(-1400, -1200)
+        max_samples = 10
+
+
+        def process_task(task_queue, result_queue):
+            """Worker function to process tasks from the queue"""
+            proc_name = mp.current_process().name
+            while True:
+                # Get a task from the queue
+                sample_time = task_queue.get()
+
+                # Check for termination signal
+                if sample_time is None:
+                    print(f"{proc_name} exiting")
+                    task_queue.put(None)  # Help other workers terminate
+                    break
+
+                # Process the task
+                print(f"{proc_name} processing time: {sample_time}")
+                # each task needs to use its own fresh Scheduler state
+                scheduler = MigratingScheduler(fragmented=self.fragmented, find_bottlenecks=self.find_bottlenecks, checkpoint_basename=self.checkpoint_basename)
+                result = scheduler.sample(vm_requests, vm_types, sample_time)
+                # result = 1
+                # time.sleep(5)
+                result_queue.put((sample_time, result))
+
+        # Create and start the worker processes
+        processes = []
+        for i in range(num_cores):
+            p = mp.Process(target=process_task, args=(task_queue, result_queue))
+            p.start()
+            processes.append(p)
+
+        # Add initial tasks to queue
+        for i in range(2*num_cores):
+            task_queue.put(next_time_sample())
+
+        # Add more tasks until we have enough samples
+        while len(samples) < max_samples:
+            task, result = result_queue.get()
+            samples += [ result ]
+            task_queue.put(next_time_sample())
+            df = pd.concat(samples)
+            df.to_pickle(f"{self.checkpoint_basename}.samples.pkl")
+            log(f"Written {len(samples)} samples to {self.checkpoint_basename}.samples.pkl")
+
+
+        # Add termination sentinel so that processes can exit nicely
+        task_queue.put(None)
+
+        # Haha, just kidding
+        for p in processes:
+            p.terminate()
 
         return pd.concat(samples)
 
@@ -567,17 +676,17 @@ class MigratingScheduler(Scheduler):
 
         # for index, row in tqdm(vm_requests.iterrows(), total=len(vm_requests)):
         for index, row in tqdm(sorted_vms.iterrows(), total=len(sorted_vms)):
-            if (int(index)%1000) == 0:
-                pr = cProfile.Profile()
-                pr.enable()
+            # if (int(index)%1000) == 0:
+            #     pr = cProfile.Profile()
+            #     pr.enable()
             self.schedule2(row)
-            if (int(index)%1000) == 0:
-                pr.disable()
-                s = io.StringIO()
-                sortby = pstats.SortKey.CUMULATIVE
-                ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-                ps.print_stats()
-                print(s.getvalue())
+            # if (int(index)%1000) == 0:
+            #     pr.disable()
+            #     s = io.StringIO()
+            #     sortby = pstats.SortKey.CUMULATIVE
+            #     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+            #     ps.print_stats()
+            #     print(s.getvalue())
 
             # if checkpoint_interval is not None and int(index) % checkpoint_interval == 0:
             #     self.iteration = int(index)
@@ -990,7 +1099,10 @@ def main():
     args = parse_args(parser)
     print(args)
 
-    vm_requests, vm_types = load_data(args.input)
+    if args.migrate or args.optimal:
+        vm_requests, vm_types = load_data(args.input, no_timeline=True)
+    else:
+        vm_requests, vm_types = load_data(args.input)
     # vm_requests = vm_requests.head(1000)
 
     log("Ranking NICs")
@@ -1012,6 +1124,7 @@ def main():
 
     scheduler.checkpoint(output=df)
     log(df["pool_size"].describe())
+    scheduler.dump()
     df.to_pickle(f"{args.output}.pkl")
     log(f"Wrote output to {args.output}.pkl")
 

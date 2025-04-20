@@ -174,7 +174,7 @@ def load_data(sqlite_file: str, no_timeline: bool = False) -> Tuple[pd.DataFrame
         b = pd.read_sql_query("SELECT vmId, vmTypeId, starttime, endtime, endtime as time_sorter FROM vm", conn)
         vm_requests = pd.concat([a, b]).sort_values("time_sorter", ignore_index=True) # one line/event for each start and end of a VM
     else:
-        vm_requests = a
+        vm_requests = a.sort_values("time_sorter", ignore_index=True) # for consistency
     # vm_requests = vm_requests.head(100_000)
 
     return vm_requests, vm_types
@@ -470,6 +470,7 @@ class Scheduler():
 
 
     def simulate(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, checkpoint_interval: int | None = 100_000) -> pd.DataFrame:
+        # vm_requests = vm_requests[vm_requests["time_sorter"] < -800]
         time = None
         time_series_time = []
         time_series_pool_size = []
@@ -729,7 +730,8 @@ class MigratingScheduler(Scheduler):
 
         canidate_types = vm_types.drop_duplicates(subset="vmTypeId", keep="first")
         join = pd.merge(active_vms, canidate_types, on="vmTypeId", how="left")
-        sorted = join.sort_values(["core", "memory", "nic"], ascending=False, ignore_index=True)
+        # sorted = join.sort_values(["core", "memory", "nic"], ascending=False, ignore_index=True)
+        sorted = join
 
         return self._simulate(sorted)
 

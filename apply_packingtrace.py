@@ -511,12 +511,14 @@ class MigratingScheduler(Scheduler):
 
     def simulate(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, checkpoint_interval: int | None = None) -> pd.DataFrame:
         samples = []
-        samples += [ self.sample(vm_requests, vm_types, -7157) ]
+        # samples += [ self.sample(vm_requests, vm_types, -7157) ]
+        samples += [ self.sample(vm_requests, vm_types, 1) ]
 
         return pd.concat(samples)
 
 
     def sample(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, time: int) -> pd.DataFrame:
+        log(f"Sample at time {time}")
         active_mask = (vm_requests['starttime'] <= time) & ((vm_requests['endtime'].isnull()) | (vm_requests['endtime'] >= time))
         active_vms = vm_requests[active_mask]
 
@@ -808,7 +810,7 @@ class OptimalScheduler():
         solver = pywraplp.Solver.CreateSolver("SCIP")
         assert solver is not None
 
-        max_instances_per_type = 10
+        max_instances_per_type = 20
         machine_capacity = 1
 
         # Variables
@@ -931,10 +933,10 @@ class OptimalScheduler():
                         i = vm["vmId"]
                         if (i, t, j) in x and x[i, t, j].solution_value() == 1:
                             vms += [ i ]
-                            core_usage += [ vm_types[(vm_types["vmTypeId"] == vm["vmTypeId"]) & (vm_types["machineId"] == t)]["core"] ]
-                            memory_usage += [ vm_types[(vm_types["vmTypeId"] == vm["vmTypeId"]) & (vm_types["machineId"] == t)]["memory"] ]
-                            ssd_usage += [ vm_types[(vm_types["vmTypeId"] == vm["vmTypeId"]) & (vm_types["machineId"] == t)]["ssd"] ]
-                            nic_usage += [ vm_types[(vm_types["vmTypeId"] == vm["vmTypeId"]) & (vm_types["machineId"] == t)]["nic"] ]
+                            core_usage += float(vm_types[(vm_types["vmTypeId"] == vm["vmTypeId"]) & (vm_types["machineId"] == t)]["core"])
+                            memory_usage += float(vm_types[(vm_types["vmTypeId"] == vm["vmTypeId"]) & (vm_types["machineId"] == t)]["memory"])
+                            ssd_usage += float(vm_types[(vm_types["vmTypeId"] == vm["vmTypeId"]) & (vm_types["machineId"] == t)]["ssd"])
+                            nic_usage += float(vm_types[(vm_types["vmTypeId"] == vm["vmTypeId"]) & (vm_types["machineId"] == t)]["nic"])
                     if vms:
                         num_machines += 1
                         num_vms += len(vms)

@@ -70,6 +70,11 @@ def setup_parser():
                         type=str,
                         help='Checkpoint to continue from',
                         )
+    parser.add_argument('-d',
+                        '--debug',
+                        type=float,
+                        help='Evaluate DEBUG time and open repl with `scheduler`',
+                        )
 
     return parser
 
@@ -480,7 +485,7 @@ class Scheduler():
 
 
     def simulate(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, checkpoint_interval: int | None = 100_000) -> pd.DataFrame:
-        # vm_requests = vm_requests[vm_requests["time_sorter"] < -800]
+        # vm_requests = vm_requests[vm_requests["time_sorter"] < 0]
         time = None
         time_series_time = []
         time_series_pool_size = []
@@ -652,7 +657,7 @@ class MigratingScheduler(Scheduler):
         result_queue = Queue()
         progress = ProgressCollector()
         next_time_sample = adaptive_sampler(0, 14)
-        max_samples = 150
+        max_samples = 256
         # max_samples = 14 * 24 * 60 # once a minute for 14 days
         # next_time_sample = adaptive_sampler(-1400, -1200)
         # max_samples = 10
@@ -1238,15 +1243,24 @@ def main():
         scheduler.restore(args.restore)
         scheduler.checkpoint_basename = checkpoint_basename
 
-    df = scheduler.simulate(vm_requests, vm_types)
+    if args.migrate and args.debug is not None:
+        df = scheduler.sample(vm_requests, vm_types, args.debug)
+    elif args.debug is not None:
+        vm_requests = vm_requests[vm_requests["time_sorter"] < args.debug]
+        df = scheduler.simulate(vm_requests, vm_types)
+    else:
+        df = scheduler.simulate(vm_requests, vm_types)
 
     scheduler.checkpoint(output=df)
-    log(df["pool_size"].describe())
     scheduler.dump()
     scheduler.dump_short()
+    log(df["pool_size"].describe())
     df.to_pickle(f"{args.output}.pkl")
     log(f"Wrote output to {args.output}.pkl")
     log(f"Took {(time.time() - start)/60:.1f} minutes")
+    if args.debug is not None:
+        breakpoint()
+        pass
 
 
 if __name__ == "__main__":

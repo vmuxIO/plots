@@ -648,7 +648,8 @@ class MigratingScheduler(Scheduler):
         result_queue = Queue()
         progress = ProgressCollector()
         next_time_sample = adaptive_sampler(0, 14)
-        max_samples = 14 * 24 * 60 # once a minute for 14 days
+        max_samples = 150
+        # max_samples = 14 * 24 * 60 # once a minute for 14 days
         # next_time_sample = adaptive_sampler(-1400, -1200)
         # max_samples = 10
         progress_bar = tqdm(range(max_samples))

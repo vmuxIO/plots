@@ -576,16 +576,17 @@ class FakeFile():
         self.buffer = msg
 
     def flush(self):
+        if len(self.buffer) < 10:
+            return
         self.shared_string.value = self.buffer.encode("utf-8")
         # log(f"flush")
-        log(f"{self.buffer}")
-        # log(f"{self.shared_string.value}")
+        log(f"1 {self.buffer}")
+        log(f"2 {self.shared_string.value}")
         # self.shared_string.value = b"<foobar>"
 
 
 class Progress():
-    def __init__(self, process: int, shared_string):
-        self.process = process
+    def __init__(self, shared_string):
         self.shared_string = shared_string
 
     def tqdm(self, iterable: Any, *args, **kwargs) -> Any:
@@ -598,16 +599,18 @@ class ProgressCollector():
 
     def new_progress(self, process: int) -> Any:
         default_string = mp.Array('c', b"<Proc {process}                                                                                                                                                                          >")
-        progress = Progress(process, default_string)
         self.shared_strings[process] = default_string
-        return progress
+        return default_string
 
     def print(self):
         lines = ""
         for process, shared_string in self.shared_strings.items():
-            string = self.shared_strings[0].value.decode('utf-8')
+            # log(shared_string.value)
+            string = shared_string.value.decode('utf-8')
             printable = ''.join(i for i in string if i.isprintable())
             lines += f"P{process:3d} {printable}\n"
+            # if process % 2 == 0:
+            #     lines += "\n"
         with open("/tmp/progress", "w") as f:
             f.write(lines)
 
@@ -636,14 +639,16 @@ class MigratingScheduler(Scheduler):
         task_queue = Queue()
         result_queue = Queue()
         progress = ProgressCollector()
-        # next_time_sample = adaptive_sampler(0, 14)
+        next_time_sample = adaptive_sampler(0, 14)
         # max_samples = 14 * 24 * 60 # once a minute for 14 days
-        next_time_sample = adaptive_sampler(-1400, -1200)
+        # next_time_sample = adaptive_sampler(-1400, -1200)
         max_samples = 10
+        progress_bar = tqdm(range(max_samples))
 
 
-        def process_task(task_queue, result_queue, progress):
+        def process_task(task_queue, result_queue, progress_string):
             """Worker function to process tasks from the queue"""
+            progress = Progress(progress_string)
             proc_name = mp.current_process().name
             while True:
                 # Get a task from the queue
@@ -688,6 +693,7 @@ class MigratingScheduler(Scheduler):
                 df = pd.concat(samples)
                 df.to_pickle(f"{self.checkpoint_basename}.samples.pkl")
                 log(f"Written {len(samples)} samples to {self.checkpoint_basename}.samples.pkl")
+                progress_bar.update(1)
 
 
         # Add termination sentinel so that processes can exit nicely
@@ -701,10 +707,10 @@ class MigratingScheduler(Scheduler):
 
 
     def sample(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, time: int) -> pd.DataFrame:
-        log(f"Sample at time {time}")
+        # log(f"Sample at time {time}")
         active_mask = (vm_requests['starttime'] <= time) & ((vm_requests['endtime'].isnull()) | (vm_requests['endtime'] >= time))
         active_vms = vm_requests[active_mask]
-        log(f"Active VMs: {len(active_vms)}")
+        # log(f"Active VMs: {len(active_vms)}")
 
         # active_vms = vm_requests
 

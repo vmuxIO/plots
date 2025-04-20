@@ -475,6 +475,10 @@ class Scheduler():
                 print(f"   {len(machine.vms)} VMs, core={machine.core}, memory={machine.memory}, hdd={machine.hdd}, ssd={machine.ssd}, nic={machine.nic}")
 
 
+    def dump_short(self):
+        [ print(f"type {k}: {len(v)} VMs") for k, v in dict(sorted(self.machine_types.items())).items() ]
+
+
     def simulate(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, checkpoint_interval: int | None = 100_000) -> pd.DataFrame:
         # vm_requests = vm_requests[vm_requests["time_sorter"] < -800]
         time = None
@@ -735,15 +739,20 @@ class MigratingScheduler(Scheduler):
     def solve(self, active_vms: pd.DataFrame, vm_types: pd.DataFrame) -> pd.DataFrame:
         # sort VMs by size. Place the biggest ones first.
 
-        canidate_types = vm_types.drop_duplicates(subset="vmTypeId", keep="first")
-        join = pd.merge(active_vms, canidate_types, on="vmTypeId", how="left")
-        # sorted = join.sort_values(["core", "memory", "nic"], ascending=False, ignore_index=True)
-        sorted = join
+        # if self.fragmented:
+        #     breakpoint()
+        #
+        #     pass
+        # else:
+        #     canidate_types = vm_types.drop_duplicates(subset="vmTypeId", keep="first")
+        #     join = pd.merge(active_vms, canidate_types, on="vmTypeId", how="left")
+        #     # sorted = join.sort_values(["core", "memory", "nic"], ascending=False, ignore_index=True)
+        #     sorted = join
 
-        return self._simulate(sorted)
+        return self._simulate(active_vms, vm_types)
 
 
-    def _simulate(self, sorted_vms: pd.DataFrame) -> pd.DataFrame:
+    def _simulate(self, active_vms: pd.DataFrame, vm_types: pd.DataFrame) -> pd.DataFrame:
         time_series_pool_size = []
         time_series_cores = []
         time_series_memory = []
@@ -758,14 +767,14 @@ class MigratingScheduler(Scheduler):
 
         # for index, row in tqdm(vm_requests.iterrows(), total=len(vm_requests)):
         if self.progress is None:
-            iter = tqdm(sorted_vms.iterrows(), total=len(sorted_vms))
+            iter = tqdm(active_vms.iterrows(), total=len(active_vms))
         else:
-            iter = self.progress.tqdm(sorted_vms.iterrows(), total=len(sorted_vms))
+            iter = self.progress.tqdm(active_vms.iterrows(), total=len(active_vms))
         for index, row in iter:
             # if (int(index)%1000) == 0:
             #     pr = cProfile.Profile()
             #     pr.enable()
-            self.schedule2(row)
+            self.schedule2(row, vm_types)
             # if (int(index)%1000) == 0:
             #     pr.disable()
             #     s = io.StringIO()
@@ -836,24 +845,46 @@ class MigratingScheduler(Scheduler):
         return df
 
 
-    def schedule2(self, joined_vm: pd.Series):
+    def schedule2(self, vm_request: pd.Series, vm_types: pd.DataFrame):
         core_bottlenecks = 0
         memory_bottlenecks = 0
         hdd_bottlenecks = 0
         ssd_bottlenecks = 0
         nic_bottlenecks = 0
 
-        machineType = float(joined_vm["machineId"])
-        core = float(joined_vm["core"])
-        memory = float(joined_vm["memory"])
-        hdd = float(joined_vm["hdd"])
-        ssd = float(joined_vm["ssd"])
-        nic = float(joined_vm["nic"])
+        vm_type = vm_request["vmTypeId"]
+        machine_type_candidates = vm_types[vm_types["vmTypeId"] == vm_type]
+
+        # TODO select optimal candidate
+        if self.fragmented:
+            pool_fragment = int(vm_request["vmId"]) % 3
+            options = len(machine_type_candidates)
+            ranges = [
+                0,
+                # passthrough
+                int(options / 3),
+                # mediation
+                int(options / 3 * 2),
+                # emulation
+                options
+            ]
+            # candidates in our fragmented pool are:
+            # ranges[pool_fragment] ... ranges[pool_fragment + 1]
+            optimal_type = machine_type_candidates.iloc[ranges[pool_fragment]]
+        else:
+            optimal_type = machine_type_candidates.iloc[0]
+
+        machineType = float(optimal_type["machineId"])
+        core = float(optimal_type["core"])
+        memory = float(optimal_type["memory"])
+        hdd = float(optimal_type["hdd"])
+        ssd = float(optimal_type["ssd"])
+        nic = float(optimal_type["nic"])
 
         # bookkeeping
         self.machine_types[machineType] = self.machine_types.get(machineType, [])
         machines = self.machine_types[machineType]
-        vm = VM(vmId=joined_vm["vmId"], vmTypeId=joined_vm["vmTypeId"])
+        vm = VM(vmId=vm_request["vmId"], vmTypeId=vm_type)
         started = None
         machine_idx = None
         if self.find_bottlenecks:
@@ -904,11 +935,11 @@ class MigratingScheduler(Scheduler):
                 self.ssd_bottleneck_f += [0]
                 self.nic_bottleneck_f += [0]
 
-        self.cores += joined_vm["core"]
-        self.memory += joined_vm["memory"]
-        self.hdd += joined_vm["hdd"]
-        self.ssd += joined_vm["ssd"]
-        self.nic += joined_vm["nic"]
+        self.cores += core
+        self.memory += memory
+        self.hdd += hdd
+        self.ssd += ssd
+        self.nic += nic
 
         self.vmId_to_machine[vm.vmId] = (machineType, machine_idx)
         # machines[vm_request["vmTypeId"]]
@@ -1212,6 +1243,7 @@ def main():
     scheduler.checkpoint(output=df)
     log(df["pool_size"].describe())
     scheduler.dump()
+    scheduler.dump_short()
     df.to_pickle(f"{args.output}.pkl")
     log(f"Wrote output to {args.output}.pkl")
     log(f"Took {(time.time() - start)/60:.1f} minutes")

@@ -576,12 +576,13 @@ class FakeFile():
         self.buffer = msg
 
     def flush(self):
-        if len(self.buffer) < 10:
-            return
-        self.shared_string.value = self.buffer.encode("utf-8")
+        printable = ''.join(i for i in self.buffer if i.isprintable())
+        if len(printable) < 5:
+            return # ignore terminal control characters
+        self.shared_string.value = printable.encode("utf-8")
         # log(f"flush")
-        log(f"1 {self.buffer}")
-        log(f"2 {self.shared_string.value}")
+        # log(f"1 {self.buffer}")
+        # log(f"2 {self.shared_string.value}")
         # self.shared_string.value = b"<foobar>"
 
 
@@ -607,10 +608,9 @@ class ProgressCollector():
         for process, shared_string in self.shared_strings.items():
             # log(shared_string.value)
             string = shared_string.value.decode('utf-8')
-            printable = ''.join(i for i in string if i.isprintable())
-            lines += f"P{process:3d} {printable}\n"
-            # if process % 2 == 0:
-            #     lines += "\n"
+            lines += f"P{process:3d} {string} "
+            if (process+1) % 3 == 0:
+                lines += "\n"
         with open("/tmp/progress", "w") as f:
             f.write(lines)
 

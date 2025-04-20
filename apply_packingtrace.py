@@ -631,18 +631,19 @@ class MigratingScheduler(Scheduler):
 
     def simulate(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, checkpoint_interval: int | None = None) -> pd.DataFrame:
         samples = []
+        samples_queued = 0
         # samples += [ self.sample(vm_requests, vm_types, -7157) ]
         # samples += [ self.sample(vm_requests, vm_types, 1) ]
 
-        # num_cores = mp.cpu_count()
-        num_cores = 4
+        num_cores = mp.cpu_count()
+        # num_cores = 4
         task_queue = Queue()
         result_queue = Queue()
         progress = ProgressCollector()
         next_time_sample = adaptive_sampler(0, 14)
-        # max_samples = 14 * 24 * 60 # once a minute for 14 days
+        max_samples = 14 * 24 * 60 # once a minute for 14 days
         # next_time_sample = adaptive_sampler(-1400, -1200)
-        max_samples = 10
+        # max_samples = 10
         progress_bar = tqdm(range(max_samples))
 
 
@@ -679,6 +680,7 @@ class MigratingScheduler(Scheduler):
         # Add initial tasks to queue
         for i in range(2*num_cores):
             task_queue.put(next_time_sample())
+            samples_queued += 1
 
         # Add more tasks until we have enough samples
         while len(samples) < max_samples:
@@ -689,7 +691,9 @@ class MigratingScheduler(Scheduler):
             else:
                 progress.print()
                 samples += [ result ]
-                task_queue.put(next_time_sample())
+                if samples_queued < max_samples:
+                    task_queue.put(next_time_sample())
+                    samples_queued += 1
                 df = pd.concat(samples)
                 df.to_pickle(f"{self.checkpoint_basename}.samples.pkl")
                 log(f"Written {len(samples)} samples to {self.checkpoint_basename}.samples.pkl")

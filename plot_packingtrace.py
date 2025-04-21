@@ -137,6 +137,18 @@ def plot_poolsize(df, g_nr_vms_plot):
     plt.subplots_adjust(top=0.8)
     plt.savefig(args.output.name)
 
+    # stats of min/max/mean of pool_size per hue
+    grouping = df.groupby("hue")
+    log(grouping.describe()["pool_size"])
+    fragmented = df[df["hue"] == "Fragmented"]["pool_size"].max()
+    fragmented_migrate = df[df["hue"] == "Fragmented+migrate"]["pool_size"].max()
+    unified = df[df["hue"] == "Unified"]["pool_size"].max()
+    unified_migrate = df[df["hue"] == "Unified+migrate"]["pool_size"].max()
+    normal_advantage = (float(fragmented) - float(unified)) / float(fragmented) * 100
+    migrate_advantage = (float(fragmented_migrate) - float(unified_migrate)) / float(fragmented_migrate) * 100
+    log(f"In the traced 14 day period, unified pools reduce the number of servers needed in the hardware pool by {migrate_advantage:.0f}% with VM migration and by {normal_advantage:.0f}% without.")
+    log(f"That makes {fragmented_migrate-unified_migrate:.0f}k and {fragmented-unified:.0f}k servers less respectively.")
+
     return g
 
 

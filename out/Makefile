@@ -24,8 +24,10 @@ install:
 packingtrace.pdf: $(wildcard ../dat/packingtrace/*) ../plot_packingtrace.py
 	python3 ../plot_packingtrace.py -o $(OUT_DIR)/packingtrace.pdf \
 		-W $(WIDTH2) -H 2.2 \
-		--1-name "Unified pool" --1 ../dat/packingtrace/all_unified.checkpoint.output.pkl \
-		--3-name "Fragmented pools" --3 ../dat/packingtrace/all_newfrag.checkpoint.output.pkl \
+		--1-name "Unified" --1 ../dat/packingtrace/all_unified.checkpoint.output.pkl \
+		--2-name "Fragmented" --2 ../dat/packingtrace/all_newfrag.checkpoint.output.pkl \
+		--3-name "Migrate unified" --3 ../dat/packingtrace/migrate_unified3.checkpoint.samples.pkl \
+		--4-name "Migrate fragmented" --4 ../dat/packingtrace/migrate_fragmented2.checkpoint.samples.pkl \
 
 packingtrace_stranding.pdf: $(wildcard ../dat/packingtrace/*) ../plot_packingtrace.py
 	python3 ../plot_packingtrace.py -o $(OUT_DIR)/packingtrace_stranding.pdf \

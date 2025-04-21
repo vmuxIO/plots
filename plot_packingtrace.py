@@ -101,6 +101,8 @@ def plot_poolsize(df, g_nr_vms_plot):
     placeholder["hue"] = [ "Total VMs" ]
     df = pd.concat([pd.DataFrame(placeholder), df], ignore_index=True)
 
+    default_palette = sns.color_palette()
+    custom_palette = ['lightgray'] + list(default_palette[1:])
 
     log("plot packingtrace data")
     df["pool_size"] = df["pool_size"] / 1000
@@ -113,18 +115,26 @@ def plot_poolsize(df, g_nr_vms_plot):
         # label=f'{self._name}',
         # color=self._line_color,
         # linestyle=self._line,
+        palette=custom_palette,
         ax=ax,
     )
-    g.set_ylabel("Hardware pool\nsize (thousand)")
+    # lines = g.get_lines()
+    # lines[-1].set_color("lightgray") # we add the placeholder to the end of the df -> index -1
+
+    yticks = g.get_yticks()
+    yticklabels = [f"{y:.0f}k" for y in yticks]
+    g.set_yticklabels(yticklabels)
+
+    g.set_ylabel("Hardware pool\nsize")
     sns.move_legend(
         ax, "upper center",
-        bbox_to_anchor=(0.5, 1.23),
+        bbox_to_anchor=(0.5, 1.45),
         ncol=3,
         title=None,
         frameon=False,
     )
     plt.tight_layout(pad=0.1)
-    plt.subplots_adjust(top=0.9)
+    plt.subplots_adjust(top=0.8)
     plt.savefig(args.output.name)
 
     return g
@@ -175,7 +185,6 @@ def add_nr_vms_plot():
     # df = pd.concat(results_by_type)
     df = pd.DataFrame({ 'day': times, 'active_count': active_counts })
 
-
     log("plotting VM count data")
     sns.set_style("white")
     df["active_count"] = df["active_count"] / 1_000
@@ -198,7 +207,15 @@ def add_nr_vms_plot():
         # markersize=60,
         # markeredgewidth=1,
     )
-    plot.set_ylabel("Total VMs (thousand)")
+
+    lines = plot.get_lines()
+    lines[0].set_color("lightgray")
+
+    yticks = plot.get_yticks()
+    yticklabels = [f"{y:.0f}k" for y in yticks]
+    plot.set_yticklabels(yticklabels)
+
+    plot.set_ylabel("Total VMs")
     plot.set_xlabel("Time (days)")
     plt.grid(axis='x')
     plt.xlim(0, 14)

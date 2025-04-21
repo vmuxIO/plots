@@ -375,6 +375,9 @@ class Scheduler():
         else:
             optimal_type = machine_type_candidates.iloc[0]
 
+        # if vm_type == 14.0:
+        #     breakpoint()
+        #     pass
         core = float(optimal_type["core"])
         memory = float(optimal_type["memory"])
         hdd = float(optimal_type["hdd"])
@@ -657,7 +660,7 @@ class MigratingScheduler(Scheduler):
         result_queue = Queue()
         progress = ProgressCollector()
         next_time_sample = adaptive_sampler(0, 14)
-        max_samples = 256
+        max_samples = 128
         # max_samples = 14 * 24 * 60 # once a minute for 14 days
         # next_time_sample = adaptive_sampler(-1400, -1200)
         # max_samples = 10
@@ -1228,8 +1231,9 @@ def main():
         vm_requests, vm_types = load_data(args.input)
     # vm_requests = vm_requests.head(1000)
 
-    log("Ranking NICs")
-    vm_types = rank_machine_types(vm_types)
+    if args.fragmented:
+        log("Ranking NICs")
+        vm_types = rank_machine_types(vm_types)
 
     log("Simulating")
     checkpoint_basename = f"{args.output}.checkpoint"

@@ -1244,7 +1244,7 @@ def main():
     else:
         scheduler = Scheduler(fragmented=args.fragmented, find_bottlenecks=args.bottlenecks, checkpoint_basename=checkpoint_basename)
     if args.restore is not None:
-        scheduler.restore(args.restore)
+        scheduler = scheduler.restore(args.restore)
         scheduler.checkpoint_basename = checkpoint_basename
 
     if args.migrate and args.debug is not None:

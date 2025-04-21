@@ -102,7 +102,7 @@ def plot_poolsize(df, g_nr_vms_plot):
     df = pd.concat([pd.DataFrame(placeholder), df], ignore_index=True)
 
     default_palette = sns.color_palette()
-    custom_palette = ['lightgray'] + list(default_palette[1:])
+    custom_palette = ['gray'] + list(default_palette[1:])
 
     log("plot packingtrace data")
     df["pool_size"] = df["pool_size"] / 1000
@@ -215,7 +215,7 @@ def add_nr_vms_plot():
     yticklabels = [f"{y:.0f}k" for y in yticks]
     plot.set_yticklabels(yticklabels)
 
-    plot.set_ylabel("Total VMs")
+    plot.set_ylabel("Total VMs", color="gray")
     plot.set_xlabel("Time (days)")
     plt.grid(axis='x')
     plt.xlim(0, 14)
@@ -250,8 +250,16 @@ def plot_utilization(df):
     df = pd.concat(dfs, ignore_index=True)
     df = df[df["resource"] != "HDD"]
 
+    default_palette = sns.color_palette()
+    custom_palette = [
+        default_palette[2],
+        default_palette[4],
+        default_palette[1],
+        default_palette[3],
+    ] + list(default_palette[5:])
+
     log("plotting utilization data")
-    log("(takes >30GB RAM and a few minutes)")
+    log("(takes maybe 20GB RAM and a few minutes)")
     g = sns.barplot(
         data=df,
         x="resource",
@@ -260,10 +268,18 @@ def plot_utilization(df):
         # label=f'{self._name}',
         # color=self._line_color,
         # linestyle=self._line,
+        palette=custom_palette,
     )
     g.set_ylabel("Resource stranding [%]    ")
     g.set_xlabel("Resource")
 
+    sns.move_legend(
+        g, "upper center",
+        # bbox_to_anchor=(0.5, 1.45),
+        ncol=2,
+        title=None,
+        frameon=False,
+    )
     # df = df[df["hue"] == "Unified"]
     #
     # log("plot utilization data")

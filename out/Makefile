@@ -26,17 +26,17 @@ packingtrace.pdf: $(wildcard ../dat/packingtrace/*) ../plot_packingtrace.py
 		-W $(WIDTH2) -H 2.2 \
 		--1-name "Unified" --1 ../dat/packingtrace/4_normal_unified.checkpoint.output.pkl \
 		--2-name "Fragmented" --2 ../dat/packingtrace/4_normal_fragmented.checkpoint.output.pkl \
-		--3-name "Migrate unified" --3 ../dat/packingtrace/4_migrate_unified.checkpoint.samples.pkl \
-		--4-name "Migrate fragmented" --4 ../dat/packingtrace/4_migrate_fragmented.checkpoint.samples.pkl \
+		--3-name "Unified+migrate" --3 ../dat/packingtrace/4_migrate_unified.checkpoint.samples.pkl \
+		--4-name "Fragmented+migrate" --4 ../dat/packingtrace/4_migrate_fragmented.checkpoint.samples.pkl \
 
 packingtrace_stranding.pdf: $(wildcard ../dat/packingtrace/*) ../plot_packingtrace.py
 	python3 ../plot_packingtrace.py -o $(OUT_DIR)/packingtrace_stranding.pdf \
 		--utilization \
 		-W $(WIDTH2) -H 2.2 \
-		--1-name "Unified" --1 ../dat/packingtrace/4_normal_unified.checkpoint.output.pkl \
-		--2-name "Fragmented" --2 ../dat/packingtrace/4_normal_fragmented.checkpoint.output.pkl \
-		--3-name "Migrate unified" --3 ../dat/packingtrace/4_migrate_unified.checkpoint.samples.pkl \
-		--4-name "Migrate fragmented" --4 ../dat/packingtrace/4_migrate_fragmented.checkpoint.samples.pkl \
+		--1-name "Fragmented" --1 ../dat/packingtrace/4_normal_fragmented.checkpoint.output.pkl \
+		--2-name "Fragmented+migrate" --2 ../dat/packingtrace/4_migrate_fragmented.checkpoint.samples.pkl \
+		--3-name "Unified" --3 ../dat/packingtrace/4_normal_unified.checkpoint.output.pkl \
+		--4-name "Unified+migrate" --4 ../dat/packingtrace/4_migrate_unified.checkpoint.samples.pkl \
 
 
 ptp:

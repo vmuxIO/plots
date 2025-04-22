@@ -48,6 +48,11 @@ def setup_parser():
                         action='store_true',
                         help='Consider VM migration while scheduling',
                         )
+    parser.add_argument('-s',
+                        '--sorted',
+                        action='store_true',
+                        help='Sort requests by size (achieves the )',
+                        )
     # parser.add_argument('-W', '--width',
     #                     type=float,
     #                     default=12,
@@ -643,9 +648,20 @@ class ProgressCollector():
 
 
 class MigratingScheduler(Scheduler):
-    def __init__(self, progress: Progress | None = None, fragmented: bool = False, find_bottlenecks: bool = False, checkpoint_basename: str = "/tmp/checkpoint"):
+    def __init__(self, progress: Progress | None = None, fragmented: bool = False, find_bottlenecks: bool = False, sorted: bool = False, checkpoint_basename: str = "/tmp/checkpoint"):
         self.progress = progress
+        self.sorted = sorted
         super().__init__(fragmented=fragmented, find_bottlenecks=find_bottlenecks, checkpoint_basename=checkpoint_basename)
+
+
+    def sort(self, active_vms: pd.DataFrame, vm_types: pd.DataFrame) -> pd.DataFrame:
+        # only works with VM migration
+        if self.sorted:
+            canidate_types = vm_types.drop_duplicates(subset="vmTypeId", keep="first")
+            join = pd.merge(active_vms, canidate_types, on="vmTypeId", how="left")
+            sorted = join.sort_values(["nic", "memory", "core"], ascending=False, ignore_index=True)
+            active_vms = sorted
+        return active_vms
 
 
     def simulate(self, vm_requests: pd.DataFrame, vm_types: pd.DataFrame, checkpoint_interval: int | None = None) -> pd.DataFrame:
@@ -684,7 +700,7 @@ class MigratingScheduler(Scheduler):
                 # Process the task
                 print(f"{proc_name} processing time: {sample_time}")
                 # each task needs to use its own fresh Scheduler state
-                scheduler = MigratingScheduler(progress=progress, fragmented=self.fragmented, find_bottlenecks=self.find_bottlenecks, checkpoint_basename=self.checkpoint_basename)
+                scheduler = MigratingScheduler(progress=progress, fragmented=self.fragmented, sorted=self.sorted, find_bottlenecks=self.find_bottlenecks, checkpoint_basename=self.checkpoint_basename)
                 result = scheduler.sample(vm_requests, vm_types, sample_time)
                 # result = 1
                 # time.sleep(5)
@@ -747,15 +763,7 @@ class MigratingScheduler(Scheduler):
     def solve(self, active_vms: pd.DataFrame, vm_types: pd.DataFrame) -> pd.DataFrame:
         # sort VMs by size. Place the biggest ones first.
 
-        # if self.fragmented:
-        #     breakpoint()
-        #
-        #     pass
-        # else:
-        #     canidate_types = vm_types.drop_duplicates(subset="vmTypeId", keep="first")
-        #     join = pd.merge(active_vms, canidate_types, on="vmTypeId", how="left")
-        #     # sorted = join.sort_values(["core", "memory", "nic"], ascending=False, ignore_index=True)
-        #     sorted = join
+        active_vms = self.sort(active_vms, vm_types)
 
         return self._simulate(active_vms, vm_types)
 
@@ -1240,7 +1248,7 @@ def main():
     if args.optimal:
         scheduler = OptimalScheduler()
     elif args.migrate:
-        scheduler = MigratingScheduler(fragmented=args.fragmented, find_bottlenecks=args.bottlenecks, checkpoint_basename=checkpoint_basename)
+        scheduler = MigratingScheduler(fragmented=args.fragmented, find_bottlenecks=args.bottlenecks, sorted=args.sorted, checkpoint_basename=checkpoint_basename)
     else:
         scheduler = Scheduler(fragmented=args.fragmented, find_bottlenecks=args.bottlenecks, checkpoint_basename=checkpoint_basename)
     if args.restore is not None:

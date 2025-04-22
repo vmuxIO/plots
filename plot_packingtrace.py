@@ -8,6 +8,7 @@ from typing import List, Any, Dict, Tuple
 from dataclasses import dataclass
 import argparse
 from math import nan as NaN
+from plotting import HATCHES
 
 def log(msg):
     print(msg, flush=True)
@@ -102,7 +103,7 @@ def plot_poolsize(df, g_nr_vms_plot):
     df = pd.concat([pd.DataFrame(placeholder), df], ignore_index=True)
 
     default_palette = sns.color_palette()
-    custom_palette = ['gray'] + list(default_palette[1:])
+    custom_palette = ['cornflowerblue'] + list(default_palette[1:])
 
     log("plot packingtrace data")
     df["pool_size"] = df["pool_size"] / 1000
@@ -133,6 +134,18 @@ def plot_poolsize(df, g_nr_vms_plot):
         title=None,
         frameon=False,
     )
+
+    g.annotate(
+        "↓ Lower is better", # or ↓ ← ↑ →
+        xycoords="axes points",
+        # xy=(0, 0),
+        xy=(0, 0),
+        xytext=(-37, -32),
+        # fontsize=FONT_SIZE,
+        color="navy",
+        weight="bold",
+    )
+
     plt.tight_layout(pad=0.1)
     plt.subplots_adjust(top=0.8)
     plt.savefig(args.output.name)
@@ -221,13 +234,13 @@ def add_nr_vms_plot():
     )
 
     lines = plot.get_lines()
-    lines[0].set_color("lightgray")
+    lines[0].set_color("lightskyblue")
 
     yticks = plot.get_yticks()
     yticklabels = [f"{y:.0f}k" for y in yticks]
     plot.set_yticklabels(yticklabels)
 
-    plot.set_ylabel("Total VMs", color="gray")
+    plot.set_ylabel("Total VMs", color="cornflowerblue")
     plot.set_xlabel("Time (days)")
     plt.grid(axis='x')
     plt.xlim(0, 14)
@@ -235,6 +248,28 @@ def add_nr_vms_plot():
     sns.set_style("whitegrid")
 
     return plot
+
+
+hatches = HATCHES
+
+def barplot_add_hatches(plot_in_grid, nr_hues, offset=0):
+    hatches_used = -1
+    bars_hatched = 0
+    for bar in plot_in_grid.patches:
+        if nr_hues <= 1:
+            hatches_used += 1
+        else: # with multiple hues, we draw bars with the same hatch in batches
+            if bars_hatched % nr_hues == 0:
+                hatches_used += 1
+        # if bars_hatched % 7 == 0:
+        #     hatches_used += 1
+        bars_hatched += 1
+        if bar.get_bbox().x0 == 0 and bar.get_bbox().x1 == 0 and bar.get_bbox().y0 == 0 and bar.get_bbox().y1 == 0:
+            # skip bars that are not rendered
+            continue
+        hatch = hatches[(offset + hatches_used) % len(hatches)]
+        print(bar, hatches_used, hatch)
+        bar.set_hatch(hatch)
 
 
 def plot_utilization(df):
@@ -262,7 +297,7 @@ def plot_utilization(df):
     df = pd.concat(dfs, ignore_index=True)
     df = df[df["resource"] != "HDD"]
 
-    default_palette = sns.color_palette()
+    default_palette = sns.color_palette("pastel")
     custom_palette = [
         default_palette[2],
         default_palette[4],
@@ -280,8 +315,16 @@ def plot_utilization(df):
         # label=f'{self._name}',
         # color=self._line_color,
         # linestyle=self._line,
+        edgecolor="dimgray",
         palette=custom_palette,
     )
+    barplot_add_hatches(g, 4)
+
+    # Fix the legend hatches
+    for i, legend_patch in enumerate(g.legend().get_patches()):
+        hatch = hatches[i % len(hatches)]
+        legend_patch.set_hatch(f"{hatch}{hatch}")
+
     g.set_ylabel("Resource stranding [%]    ")
     g.set_xlabel("Resource")
 
@@ -305,6 +348,18 @@ def plot_utilization(df):
     #     # color=self._line_color,
     #     # linestyle=self._line,
     # )
+
+    g.annotate(
+        "↓ Lower is better", # or ↓ ← ↑ →
+        xycoords="axes points",
+        # xy=(0, 0),
+        xy=(0, 0),
+        xytext=(-37, -35),
+        # fontsize=FONT_SIZE,
+        color="navy",
+        weight="bold",
+    )
+
     g.set(ylim=(0, 100))
     plt.tight_layout(pad=0.1)
     plt.savefig(f"{args.output.name}")

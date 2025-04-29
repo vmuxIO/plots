@@ -273,11 +273,11 @@ def main():
 
         # Set different y-limits for different conditions
         if "media" in ax.get_title():
-            ax.set_ylim(5, 47)
+            ax.set_ylim(5, 20)
         elif "hotel" in ax.get_title():
             ax.set_ylim(2, 9)
         elif "social" in ax.get_title():
-            ax.set_ylim(0, 10)
+            ax.set_ylim(0, 5.5)
 
     grid.map_dataframe(pointplot_with_ylim,
     # grid.map_dataframe(sns.pointplot,

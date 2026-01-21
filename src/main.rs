@@ -96,6 +96,16 @@ impl Machine {
 
         return StartResult::Ok;
     }
+
+    pub fn stop_vm(&mut self, vm_id: i64, machine_type: &VmType) -> bool {
+        let matches = self.vms.iter().filter(|vm| vm.vm_id == vm_id);
+        if matches.count() == 0 {
+            return false;
+        }
+        self.core -= machine_type.core;
+        // TODO shouldnt we remove the VM from self.vms?
+        return true;
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -173,8 +183,24 @@ impl FirstFitDecreasing {
         self.vmId_to_machine.insert(vm.vm_id, (optimal_type.machine_id, machine_idx.expect("that we asserted Some")));
     }
 
-    pub fn unschedule(&mut self, _request: &VmRequest, _vm_types: &Vec<VmType>) {
-        // TODO implement scheduling logic
+    pub fn unschedule(&mut self, vm_request: &VmRequest, vm_types: &Vec<VmType>) {
+        let vm_type = vm_request.vm_type_id;
+        let vm_id = vm_request.vm_id;
+        let (machine_id, machine_idx) = match self.vmId_to_machine.get(&vm_id) {
+            Some(data) => data.clone(),
+            None => panic!("Trying to unschedule VM {} which was never scheduled?", vm_id),
+        };
+        let vm_usage = vm_types.iter().find(|vt| vt.vm_type_id == vm_type && vt.machine_id == machine_id);
+        let vm_usage = vm_usage.unwrap();
+        let machine = self.machine_types.get_mut(&machine_id).unwrap().get_mut(machine_idx).unwrap();
+        let _ = machine.stop_vm(vm_id, vm_usage) || panic!("Failed to stop VM {} on machine {}", vm_id, machine_id);
+
+        self.cores -= vm_usage.core;
+
+        if machine.vms.len() == 0 {
+            self.machine_types.get_mut(&machine_id).unwrap().remove(machine_idx);
+        }
+        self.vmId_to_machine.remove(&vm_id);
     }
 
     pub fn simulate(&mut self, vm_requests: &Vec<VmRequest>, vm_types: &Vec<VmType>) {
@@ -194,9 +220,9 @@ impl FirstFitDecreasing {
             }
 
             if let Some(time_sorter) = request.time_sorter && request.starttime == time_sorter {
-                    self.schedule(request, vm_types);
+                self.schedule(request, vm_types);
             } else if request.endtime == request.time_sorter {
-                    self.unschedule(request, vm_types);
+                self.unschedule(request, vm_types);
             } else {
                 panic!("Invalid VmRequest: {:?}", request);
             }
@@ -281,11 +307,14 @@ pub fn load_data(sqlite_file: &str) -> Result<(Vec<VmRequest>, Vec<VmType>)> {
         });
     }
 
-    // Sort by time_sorter
+    // Sort by time_sorter (Nones at the end)
     vm_requests.sort_by(|a, b| {
-        a.time_sorter
-            .partial_cmp(&b.time_sorter)
-            .unwrap_or(std::cmp::Ordering::Equal)
+        match (a.time_sorter, b.time_sorter) {
+            (None, None) => std::cmp::Ordering::Equal,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (Some(a), Some(b)) => a.partial_cmp(&b).unwrap_or(std::cmp::Ordering::Equal),
+        }
     });
 
     Ok((vm_requests, vm_types))

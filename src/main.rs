@@ -103,6 +103,10 @@ impl Machine {
             return false;
         }
         self.core -= machine_type.core;
+        self.memory -= machine_type.memory;
+        self.hdd -= machine_type.hdd;
+        self.ssd -= machine_type.ssd;
+        self.nic -= machine_type.nic;
         // TODO shouldnt we remove the VM from self.vms?
         return true;
     }
@@ -116,7 +120,11 @@ pub struct FirstFitDecreasing {
     #[allow(nonstandard_style)]
     vmId_to_machine: HashMap<i64, (i64, usize)>, // vm_id -> (machine_type, machine_index)
 
-    cores: f64
+    cores: f64,
+    memory: f64,
+    hdd: f64,
+    ssd: f64,
+    nic: f64,
 }
 
 impl FirstFitDecreasing {
@@ -126,6 +134,10 @@ impl FirstFitDecreasing {
             machine_types: HashMap::new(),
             vmId_to_machine: HashMap::new(),
             cores: 0.0,
+            memory: 0.0,
+            hdd: 0.0,
+            ssd: 0.0,
+            nic: 0.0,
         }
     }
 
@@ -150,6 +162,10 @@ impl FirstFitDecreasing {
         };
 
         let core = optimal_type.core;
+        let memory = optimal_type.memory;
+        let hdd = optimal_type.hdd;
+        let ssd = optimal_type.ssd;
+        let nic = optimal_type.nic;
 
         // bookkeeping
         let machines = self.machine_types.entry(optimal_type.machine_id).or_insert(Vec::new());
@@ -157,7 +173,7 @@ impl FirstFitDecreasing {
         let mut started = None;
         let mut machine_idx = None;
         for (idx, machine) in machines.iter_mut().enumerate() {
-            started = Some(machine.start_vm2(vm.clone(), core, /* TODO */ 0.0, 0.0, 0.0, 0.0));
+            started = Some(machine.start_vm2(vm.clone(), core, memory, hdd, ssd, nic));
             // TODO measure bottlenecks
             if let Some(StartResult::Ok) = started {
                 machine_idx = Some(idx);
@@ -169,7 +185,7 @@ impl FirstFitDecreasing {
         if started.is_none() || started.as_ref().unwrap() != &StartResult::Ok {
             machines.push(Machine::new(optimal_type.machine_id));
             started = Some(machines.last_mut().expect("that we just pushed something")
-                .start_vm2(vm.clone(), core, /* TODO */ 0.0, 0.0, 0.0, 0.0));
+                .start_vm2(vm.clone(), core, memory, hdd, ssd, nic));
             machine_idx = Some(machines.len() - 1);
         }
         assert_eq!(started.unwrap(), StartResult::Ok);
@@ -179,6 +195,10 @@ impl FirstFitDecreasing {
         // TODO
 
         self.cores += optimal_type.core;
+        self.memory += optimal_type.memory;
+        self.hdd += optimal_type.hdd;
+        self.ssd += optimal_type.ssd;
+        self.nic += optimal_type.nic;
 
         self.vmId_to_machine.insert(vm.vm_id, (optimal_type.machine_id, machine_idx.expect("that we asserted Some")));
     }
@@ -196,6 +216,10 @@ impl FirstFitDecreasing {
         let _ = machine.stop_vm(vm_id, vm_usage) || panic!("Failed to stop VM {} on machine {}", vm_id, machine_id);
 
         self.cores -= vm_usage.core;
+        self.memory -= vm_usage.memory;
+        self.hdd -= vm_usage.hdd;
+        self.ssd -= vm_usage.ssd;
+        self.nic -= vm_usage.nic;
 
         if machine.vms.len() == 0 {
             self.machine_types.get_mut(&machine_id).unwrap().remove(machine_idx);
@@ -209,6 +233,10 @@ impl FirstFitDecreasing {
         let mut time_series_time = Vec::with_capacity(vm_requests.len());
         let mut time_series_pool_size = Vec::with_capacity(vm_requests.len());
         let mut time_series_cores = Vec::with_capacity(vm_requests.len());
+        let mut time_series_memory = Vec::with_capacity(vm_requests.len());
+        let mut time_series_hdd = Vec::with_capacity(vm_requests.len());
+        let mut time_series_ssd = Vec::with_capacity(vm_requests.len());
+        let mut time_series_nic = Vec::with_capacity(vm_requests.len());
 
         // let mut time_series_ = Vec::with_capacity(vm_requests.len()); TODO
 
@@ -248,7 +276,11 @@ impl FirstFitDecreasing {
                 time_series_pool_size.push(self.pool_size());
                 // cluster usage (1-strading) statistics
                 time_series_cores.push(self.cores);
-                // TODO
+                time_series_memory.push(self.memory);
+                time_series_hdd.push(self.hdd);
+                time_series_ssd.push(self.ssd);
+                time_series_nic.push(self.nic);
+                // TODO find bottlenecks
             }
         }
         bar.finish();

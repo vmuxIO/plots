@@ -1,6 +1,7 @@
 use indicatif::{ProgressBar, ProgressStyle};
 use rusqlite::{Connection, Result};
 use std::collections::HashMap;
+use polars::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct VmType {
@@ -141,6 +142,16 @@ impl FirstFitDecreasing {
         }
     }
 
+    pub fn checkpoint(&mut self, df: &mut DataFrame) {
+        let basename = "/tmp/foobar";
+        println!("Writing checkpoint.parquet");
+        let file = std::fs::File::create(format!("{}.checkpoint.parquet", basename)).expect("Failed to create parquet file");
+        ParquetWriter::new(file)
+            .finish(df)
+            .expect("Failed to write parquet file");
+
+    }
+
     pub fn pool_size(&self) -> usize {
         self.machine_types.values().map(|machines| machines.len()).sum()
     }
@@ -227,11 +238,11 @@ impl FirstFitDecreasing {
         self.vmId_to_machine.remove(&vm_id);
     }
 
-    pub fn simulate(&mut self, vm_requests: &Vec<VmRequest>, vm_types: &Vec<VmType>) {
+    pub fn simulate(&mut self, vm_requests: &Vec<VmRequest>, vm_types: &Vec<VmType>) -> DataFrame {
         let checkpoint_interval = 100_000;
         let mut time: f64 = f64::MIN; // log the newest point in time reached by our simulation
         let mut time_series_time = Vec::with_capacity(vm_requests.len());
-        let mut time_series_pool_size = Vec::with_capacity(vm_requests.len());
+        let mut time_series_pool_size: Vec<i64> = Vec::with_capacity(vm_requests.len());
         let mut time_series_cores = Vec::with_capacity(vm_requests.len());
         let mut time_series_memory = Vec::with_capacity(vm_requests.len());
         let mut time_series_hdd = Vec::with_capacity(vm_requests.len());
@@ -258,6 +269,17 @@ impl FirstFitDecreasing {
             // TODO checkpointing
             if checkpoint_interval > 0 && index % checkpoint_interval == 0 {
                 println!("Checkpoint: {} hosts", self.pool_size());
+                let mut df = df!(
+                    "time" => &time_series_time,
+                    "pool_size" => &time_series_pool_size,
+                    "cores" => &time_series_cores,
+                    "memory" => &time_series_memory,
+                    "hdd" => &time_series_hdd,
+                    "ssd" => &time_series_ssd,
+                    "nic" => &time_series_nic,
+                    "fragmented" => vec![false; time_series_time.len()],
+                ).expect("Failed to create DataFrame");
+                self.checkpoint(&mut df);
             }
 
             let time_sorter = match request.time_sorter {
@@ -273,7 +295,7 @@ impl FirstFitDecreasing {
                 // (multiple rows can have the same time for which we aggregate results)
                 time = time_sorter;
                 time_series_time.push(time);
-                time_series_pool_size.push(self.pool_size());
+                time_series_pool_size.push(self.pool_size() as i64);
                 // cluster usage (1-strading) statistics
                 time_series_cores.push(self.cores);
                 time_series_memory.push(self.memory);
@@ -284,6 +306,20 @@ impl FirstFitDecreasing {
             }
         }
         bar.finish();
+
+        println!("Preparing output DataFrame");
+        let df = df!(
+            "time" => &time_series_time,
+            "pool_size" => &time_series_pool_size,
+            "cores" => &time_series_cores,
+            "memory" => &time_series_memory,
+            "hdd" => &time_series_hdd,
+            "ssd" => &time_series_ssd,
+            "nic" => &time_series_nic,
+            "fragmented" => vec![false; time_series_time.len()],
+        ).expect("Failed to create DataFrame");
+
+        return df;
     }
 }
 
@@ -370,6 +406,11 @@ fn main() {
     // TODO rank VMs
 
     let mut scheduler = FirstFitDecreasing::new();
-    scheduler.simulate(&vm_requests, &vm_types);
+    let mut df = scheduler.simulate(&vm_requests, &vm_types);
 
+    println!("Writing output.parquet");
+    let file = std::fs::File::create("output.parquet").expect("Failed to create parquet file");
+    ParquetWriter::new(file)
+        .finish(&mut df)
+        .expect("Failed to write parquet file");
 }

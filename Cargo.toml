@@ -7,3 +7,4 @@ edition = "2024"
 indicatif = "0.18"
 rusqlite = { version = "0.32", features = ["bundled"] }
 polars = { version = "0.46", features = ["parquet"] }
+clap = { version = "4", features = ["derive"] }

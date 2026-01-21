@@ -2,6 +2,16 @@ use indicatif::{ProgressBar, ProgressStyle};
 use rusqlite::{Connection, Result};
 use std::collections::HashMap;
 use polars::prelude::*;
+use clap::Parser;
+
+#[derive(Parser)]
+#[command(name = "plots")]
+struct Args {
+    #[arg(short, long, default_value = "/tmp/packingtrace")]
+    output: String,
+    #[arg(short, long, default_value = "packing_trace_zone_a_v1.sqlite")]
+    input: String,
+}
 
 #[derive(Debug, Clone)]
 pub struct VmType {
@@ -116,6 +126,7 @@ impl Machine {
 #[derive(Debug, Clone)]
 pub struct FirstFitDecreasing {
     iteration: usize,
+    basename: String,
 
     machine_types: HashMap<i64, Vec<Machine>>, // machine_type -> instantiated physical machines
     #[allow(nonstandard_style)]
@@ -129,9 +140,10 @@ pub struct FirstFitDecreasing {
 }
 
 impl FirstFitDecreasing {
-    pub fn new() -> Self {
+    pub fn new(args: &Args) -> Self {
         FirstFitDecreasing {
             iteration: 0,
+            basename: String::from(&args.output),
             machine_types: HashMap::new(),
             vmId_to_machine: HashMap::new(),
             cores: 0.0,
@@ -143,9 +155,8 @@ impl FirstFitDecreasing {
     }
 
     pub fn checkpoint(&mut self, df: &mut DataFrame) {
-        let basename = "/tmp/foobar";
         println!("Writing checkpoint.parquet");
-        let file = std::fs::File::create(format!("{}.checkpoint.parquet", basename)).expect("Failed to create parquet file");
+        let file = std::fs::File::create(format!("{}.checkpoint.parquet", self.basename)).expect("Failed to create parquet file");
         ParquetWriter::new(file)
             .finish(df)
             .expect("Failed to write parquet file");
@@ -399,17 +410,19 @@ fn progress_bar(len: u64) -> ProgressBar {
 }
 
 fn main() {
+    let args = Args::parse();
+
     println!("Loading data");
-    let (vm_requests, vm_types) = load_data("packing_trace_zone_a_v1.sqlite").unwrap();
+    let (vm_requests, vm_types) = load_data(&args.input).unwrap();
     println!("Loaded {} VM requests and {} VM types", vm_requests.len(), vm_types.len());
 
     // TODO rank VMs
 
-    let mut scheduler = FirstFitDecreasing::new();
+    let mut scheduler = FirstFitDecreasing::new(&args);
     let mut df = scheduler.simulate(&vm_requests, &vm_types);
 
     println!("Writing output.parquet");
-    let file = std::fs::File::create("output.parquet").expect("Failed to create parquet file");
+    let file = std::fs::File::create(format!("{}.output.parquet", &args.output)).expect("Failed to create parquet file");
     ParquetWriter::new(file)
         .finish(&mut df)
         .expect("Failed to write parquet file");

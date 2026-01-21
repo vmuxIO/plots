@@ -36,6 +36,10 @@ XLABEL = '     Offered load (req/s)'
 def map_linestyle(hue: str) -> str:
     if "vMux" in hue:
         return '-'
+    elif "VirtIO" in hue:
+        return "--"
+    elif "Qemu-e1000" in hue:
+        return (0, (1, 3))
     else:
         return ':'
     # linestyles = [ '-', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--', '--']

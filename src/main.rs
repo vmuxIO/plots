@@ -3,6 +3,8 @@ use rusqlite::{Connection, Result};
 use std::collections::HashMap;
 use polars::prelude::*;
 use clap::Parser;
+use rand_pcg::Pcg64Mcg;
+use rand_pcg::rand_core::RngCore;
 
 #[derive(Parser)]
 #[command(name = "plots")]
@@ -57,6 +59,8 @@ pub struct Machine {
     pub machine_id: i64,
     pub vms: Vec<VM>,
 
+    pool_type: PoolType,
+
     // utilization
     core: f64,
     memory: f64,
@@ -67,9 +71,14 @@ pub struct Machine {
 
 impl Machine {
     pub fn new(machine_id: i64) -> Self {
+        Machine::new2(machine_id, PoolType::Unified)
+    }
+
+    pub fn new2(machine_id: i64, pool_type: PoolType) -> Self {
         Machine {
             machine_id,
             vms: Vec::new(),
+            pool_type,
             core: 0.0,
             memory: 0.0,
             hdd: 0.0,
@@ -125,11 +134,55 @@ impl Machine {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PoolType {
+    Emulation,
+    Mediation,
+    Passthrough,
+    Unified,
+}
+
+impl PoolType {
+    pub fn prng(rng: &mut Pcg64Mcg) -> Self {
+        let emulation_perc = 15;
+        let mediation_perc = 75;
+        let passthrough_perc = 10;
+
+        let a = 0;
+        let b = emulation_perc;
+        let c = emulation_perc + mediation_perc;
+        let d = emulation_perc + mediation_perc + passthrough_perc;
+
+        let rnd = rng.next_u32() % d;
+        match rnd {
+            _ if a <= rnd && rnd < b => PoolType::Emulation,
+            _ if b <= rnd && rnd < c => PoolType::Mediation,
+            _ if c <= rnd && rnd < d => PoolType::Passthrough,
+            _ => panic!("Random number out of bounds"),
+            // a..b => PoolType::Emulation,
+            // b..c => PoolType::Mediation,
+            // c..d => PoolType::Passthrough,
+        }
+    }
+
+    /// When self is a machine, checks if vm_pool_type VMs can be hosted on it
+    pub fn is_compatible_vm(&self, vm_pool_type: &PoolType) -> bool {
+        match self {
+            PoolType::Unified => true,
+            PoolType::Emulation => vm_pool_type == &PoolType::Emulation,
+            PoolType::Mediation => vm_pool_type == &PoolType::Mediation,
+            PoolType::Passthrough => true,
+            // allow migration only from emulation or mediation to passthrough
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct FirstFitDecreasing {
     iteration: usize,
     basename: String,
     fragmented: bool,
+    rng: Pcg64Mcg,
 
     machine_types: HashMap<i64, Vec<Machine>>, // machine_type -> instantiated physical machines
     #[allow(nonstandard_style)]
@@ -148,6 +201,8 @@ impl FirstFitDecreasing {
             iteration: 0,
             basename: String::from(&args.output),
             fragmented: args.fragmented,
+            // TODO test with 4 random seeds
+            rng: Pcg64Mcg::new(1),
             machine_types: HashMap::new(),
             vmId_to_machine: HashMap::new(),
             cores: 0.0,
@@ -180,25 +235,33 @@ impl FirstFitDecreasing {
 
         // here we could apply better candidate selection heuristics, if we were not
         // bound to first-fit-decreasing
-        let optimal_type = match self.fragmented {
+        let (pool_type, optimal_type) = match self.fragmented {
+            // true => {
+            //     let pool_fragment = request.vm_id % 3;
+            //     let options = machine_type_candidates.len();
+            //     let ranges = [
+            //         0,
+            //         // passthrough
+            //         (options/3) as usize,
+            //         // mediation
+            //         (options / 3 * 2) as usize,
+            //         // emulation
+            //         options as usize
+            //     ];
+            //     // candidates in our fragmented pool are:
+            //     // ranges[pool_fragment] ... ranges[pool_fragment + 1]
+            //     machine_type_candidates[ranges[pool_fragment as usize]]
+            // },
             true => {
-                let pool_fragment = request.vm_id % 3;
-                let options = machine_type_candidates.len();
-                let ranges = [
-                    0,
-                    // passthrough
-                    (options/3) as usize,
-                    // mediation
-                    (options / 3 * 2) as usize,
-                    // emulation
-                    options as usize
-                ];
-                // candidates in our fragmented pool are:
-                // ranges[pool_fragment] ... ranges[pool_fragment + 1]
-                machine_type_candidates[ranges[pool_fragment as usize]]
+                let vm_pool_type = PoolType::prng(&mut self.rng);
+
+                let optimal_type = machine_type_candidates.first().expect("VM types are complete. We always have one.");
+                (vm_pool_type, optimal_type)
             },
             false => {
-                machine_type_candidates.first().expect("VM types are complete. We always have one.")
+                let vm_pool_type = PoolType::Unified;
+                let optimal_type = machine_type_candidates.first().expect("VM types are complete. We always have one.");
+                (vm_pool_type, optimal_type)
             },
         };
 
@@ -214,6 +277,10 @@ impl FirstFitDecreasing {
         let mut started = None;
         let mut machine_idx = None;
         for (idx, machine) in machines.iter_mut().enumerate() {
+            if self.fragmented && !machine.pool_type.is_compatible_vm(&pool_type) {
+                // TODO measure fragmentation as bottleneck?
+                continue;
+            }
             started = Some(machine.start_vm2(vm.clone(), core, memory, hdd, ssd, nic));
             // TODO measure bottlenecks
             if let Some(StartResult::Ok) = started {
@@ -224,7 +291,7 @@ impl FirstFitDecreasing {
 
         // create new machine if necessary
         if started.is_none() || started.as_ref().unwrap() != &StartResult::Ok {
-            machines.push(Machine::new(optimal_type.machine_id));
+            machines.push(Machine::new2(optimal_type.machine_id, pool_type));
             started = Some(machines.last_mut().expect("that we just pushed something")
                 .start_vm2(vm.clone(), core, memory, hdd, ssd, nic));
             machine_idx = Some(machines.len() - 1);
@@ -515,13 +582,13 @@ fn main() {
 
     println!("Loading data");
     let (vm_requests, vm_types) = load_data(&args.input).unwrap();
-    let vm_types = match args.fragmented {
-        true => {
-            println!("Ranking VM types by network speed");
-            rank_machine_types(&vm_types)
-        },
-        false => vm_types,
-    };
+    // let vm_types = match args.fragmented {
+    //     true => {
+    //         println!("Ranking VM types by network speed");
+    //         rank_machine_types(&vm_types)
+    //     },
+    //     false => vm_types,
+    // };
     println!("Loaded {} VM requests and {} VM types", vm_requests.len(), vm_types.len());
 
     // TODO rank VMs

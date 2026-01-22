@@ -120,16 +120,13 @@ impl Machine {
     }
 
     pub fn stop_vm(&mut self, vm_id: i64, machine_type: &VmType) -> bool {
-        let matches = self.vms.iter().filter(|vm| vm.vm_id == vm_id);
-        if matches.count() == 0 {
-            return false;
-        }
+        let position = self.vms.iter().position(|vm| vm.vm_id == vm_id).expect("VM to stop must exist");
+        let _ = self.vms.swap_remove(position);
         self.core -= machine_type.core;
         self.memory -= machine_type.memory;
         self.hdd -= machine_type.hdd;
         self.ssd -= machine_type.ssd;
         self.nic -= machine_type.nic;
-        // TODO shouldnt we remove the VM from self.vms?
         return true;
     }
 }
@@ -329,10 +326,11 @@ impl FirstFitDecreasing {
         self.ssd -= vm_usage.ssd;
         self.nic -= vm_usage.nic;
 
-        if machine.vms.len() == 0 {
-            self.machine_types.get_mut(&machine_id).unwrap().remove(machine_idx);
-        }
-        self.vmId_to_machine.remove(&vm_id);
+        // Just because a machines becomes empty, it doesnt disappear. It was already bought.
+        // if machine.vms.len() == 0 {
+        //     self.machine_types.get_mut(&machine_id).unwrap().remove(machine_idx);
+        // }
+        // self.vmId_to_machine.remove(&vm_id);
     }
 
     pub fn simulate(&mut self, vm_requests: &Vec<VmRequest>, vm_types: &Vec<VmType>) -> DataFrame {

@@ -418,6 +418,88 @@ pub fn load_data(sqlite_file: &str) -> Result<(Vec<VmRequest>, Vec<VmType>)> {
     Ok((vm_requests, vm_types))
 }
 
+fn rank_machines_by_network_speed(data: &Vec<(i64, i64, f64)>) -> Vec<(i64, f64)> {
+    // Group by vmTypeId
+    let mut vm_to_machines: HashMap<i64, Vec<(i64, f64)>> = HashMap::new();
+    for (vm_id, machine_id, usage) in data {
+        vm_to_machines
+            .entry(*vm_id)
+            .or_insert(Vec::new())
+            .push((*machine_id, *usage));
+    }
+
+    // For each VM type, normalize and calculate relative speeds
+    let mut relative_speeds: HashMap<i64, Vec<f64>> = HashMap::new();
+    for (_vm_id, machine_usages) in vm_to_machines.iter() {
+        // Find maximum usage within each VM type for normalization
+        let max_usage = machine_usages
+            .iter()
+            .map(|(_, usage)| *usage)
+            .fold(f64::NEG_INFINITY, f64::max);
+
+        for (machine_id, usage) in machine_usages {
+            // Lower usage fraction implies higher network speed
+            // Normalize to get relative speed compared to other machines
+            let normalized_speed = if *usage > 0.0 {
+                max_usage / usage
+            } else {
+                f64::INFINITY
+            };
+
+            relative_speeds
+                .entry(*machine_id)
+                .or_insert(Vec::new())
+                .push(normalized_speed);
+        }
+    }
+
+    // Calculate average relative speed for each machine
+    let mut avg_speeds: HashMap<i64, f64> = HashMap::new();
+    for (machine_id, speeds) in relative_speeds.iter() {
+        let sum: f64 = speeds.iter().sum();
+        avg_speeds.insert(*machine_id, sum / speeds.len() as f64);
+    }
+
+    // Rank machines by average relative speed (highest first)
+    let mut ranked_machines: Vec<(i64, f64)> = avg_speeds.into_iter().collect();
+    ranked_machines.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+    ranked_machines
+}
+
+fn rank_machine_types(vm_types: &Vec<VmType>) -> Vec<VmType> {
+    let mut data: Vec<(i64, i64, f64)> = Vec::new();
+    for vt in vm_types {
+        data.push((vt.vm_type_id, vt.machine_id, vt.nic));
+    }
+
+    // Example usage
+    // data = [
+    //     ("vm1", "machine1", 0.2),
+    //     ("vm1", "machine2", 0.1),  # machine2 is faster for vm1 (uses half the fraction)
+    //     ("vm2", "machine1", 0.3),
+    //     ("vm2", "machine3", 0.15)  # machine3 is faster for vm2
+    // ]
+
+    let ranked_machines = rank_machines_by_network_speed(&data);
+
+    // Build a map from machine_id to relative_speed for quick lookup
+    let speed_map: HashMap<i64, f64> = ranked_machines.into_iter().collect();
+
+    // Create pairs of (vm_type, nic_performance) and sort by nic_performance descending
+    let mut vm_types_with_perf: Vec<(VmType, f64)> = vm_types
+        .iter()
+        .map(|vt| {
+            let speed = *speed_map.get(&vt.machine_id).expect("machine_id must exist");
+            (vt.clone(), speed)
+        })
+        .collect();
+
+    vm_types_with_perf.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+    vm_types_with_perf.into_iter().map(|(vt, _)| vt).collect()
+}
+
 fn progress_bar(len: u64) -> ProgressBar {
     let bar = ProgressBar::new(len);
     bar.set_style(
@@ -433,6 +515,13 @@ fn main() {
 
     println!("Loading data");
     let (vm_requests, vm_types) = load_data(&args.input).unwrap();
+    let vm_types = match args.fragmented {
+        true => {
+            println!("Ranking VM types by network speed");
+            rank_machine_types(&vm_types)
+        },
+        false => vm_types,
+    };
     println!("Loaded {} VM requests and {} VM types", vm_requests.len(), vm_types.len());
 
     // TODO rank VMs

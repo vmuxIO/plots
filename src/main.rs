@@ -11,6 +11,8 @@ struct Args {
     output: String,
     #[arg(short, long, default_value = "packing_trace_zone_a_v1.sqlite")]
     input: String,
+    #[arg(short, long, default_value_t = false)]
+    fragmented: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -127,6 +129,7 @@ impl Machine {
 pub struct FirstFitDecreasing {
     iteration: usize,
     basename: String,
+    fragmented: bool,
 
     machine_types: HashMap<i64, Vec<Machine>>, // machine_type -> instantiated physical machines
     #[allow(nonstandard_style)]
@@ -144,6 +147,7 @@ impl FirstFitDecreasing {
         FirstFitDecreasing {
             iteration: 0,
             basename: String::from(&args.output),
+            fragmented: args.fragmented,
             machine_types: HashMap::new(),
             vmId_to_machine: HashMap::new(),
             cores: 0.0,
@@ -174,13 +178,28 @@ impl FirstFitDecreasing {
             .filter(|vt| vt.vm_type_id == vm_type)
             .collect::<Vec<&VmType>>();
 
-        // TODO select optimal candidate
-        let optimal_type = match false {
+        // here we could apply better candidate selection heuristics, if we were not
+        // bound to first-fit-decreasing
+        let optimal_type = match self.fragmented {
             true => {
-                // TODO implement fragmentation
-                unreachable!();
+                let pool_fragment = request.vm_id % 3;
+                let options = machine_type_candidates.len();
+                let ranges = [
+                    0,
+                    // passthrough
+                    (options/3) as usize,
+                    // mediation
+                    (options / 3 * 2) as usize,
+                    // emulation
+                    options as usize
+                ];
+                // candidates in our fragmented pool are:
+                // ranges[pool_fragment] ... ranges[pool_fragment + 1]
+                machine_type_candidates[ranges[pool_fragment as usize]]
             },
-            false => machine_type_candidates.first().expect("VM types are complete. We always have one."),
+            false => {
+                machine_type_candidates.first().expect("VM types are complete. We always have one.")
+            },
         };
 
         let core = optimal_type.core;
@@ -288,7 +307,7 @@ impl FirstFitDecreasing {
                     "hdd" => &time_series_hdd,
                     "ssd" => &time_series_ssd,
                     "nic" => &time_series_nic,
-                    "fragmented" => vec![false; time_series_time.len()],
+                    "fragmented" => vec![self.fragmented; time_series_time.len()],
                 ).expect("Failed to create DataFrame");
                 self.checkpoint(&mut df);
             }
@@ -327,7 +346,7 @@ impl FirstFitDecreasing {
             "hdd" => &time_series_hdd,
             "ssd" => &time_series_ssd,
             "nic" => &time_series_nic,
-            "fragmented" => vec![false; time_series_time.len()],
+            "fragmented" => vec![self.fragmented; time_series_time.len()],
         ).expect("Failed to create DataFrame");
 
         return df;

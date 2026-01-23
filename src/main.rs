@@ -141,9 +141,9 @@ pub enum PoolType {
 
 impl PoolType {
     pub fn prng(rng: &mut Pcg64Mcg, vm_type_id: i64) -> Self {
-        let emulation_perc = 15;
-        let mediation_perc = 75;
-        let passthrough_perc = 10;
+        let emulation_perc = 11;
+        let mediation_perc = 84;
+        let passthrough_perc = 5;
 
         let a = 0;
         let b = emulation_perc;
@@ -180,7 +180,7 @@ impl PoolType {
             PoolType::Unified => true,
             PoolType::Emulation => vm_pool_type == &PoolType::Emulation,
             PoolType::Mediation => vm_pool_type == &PoolType::Mediation,
-            PoolType::Passthrough => true,
+            PoolType::Passthrough => true, // vm_pool_type == &PoolType::Passthrough,
             // allow migration only from emulation or mediation to passthrough
         }
     }

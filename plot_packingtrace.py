@@ -72,6 +72,14 @@ def parse_args(parser):
 
     return args
 
+def readfile(path):
+    if path.endswith(".pkl"):
+        df = pd.read_pickle(path)
+    elif path.endswith(".parquet"):
+        df = pd.read_parquet(path)
+
+    return df
+
 
 parser = setup_parser()
 args = parse_args(parser)
@@ -79,7 +87,7 @@ args = parse_args(parser)
 dfs = []
 for color in COLORS:
     if args.__dict__[color]:
-        arg_dfs = [ pd.read_pickle(f.name) for f in args.__dict__[color] ]
+        arg_dfs = [ readfile(f.name) for f in args.__dict__[color] ]
         arg_df = pd.concat(arg_dfs)
         name = args.__dict__[f'{color}_name']
         arg_df["hue"] = name
@@ -129,7 +137,7 @@ def plot_poolsize(df, g_nr_vms_plot):
     g.set_ylabel("Hardware pool\nsize")
     sns.move_legend(
         ax, "upper center",
-        bbox_to_anchor=(0.5, 1.45),
+        bbox_to_anchor=(0.5, 1.3),
         ncol=3,
         title=None,
         frameon=False,
@@ -147,7 +155,7 @@ def plot_poolsize(df, g_nr_vms_plot):
     )
 
     plt.tight_layout(pad=0.1)
-    plt.subplots_adjust(top=0.8)
+    plt.subplots_adjust(top=0.85)
     plt.savefig(args.output.name)
 
     # stats of min/max/mean of pool_size per hue

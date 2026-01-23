@@ -322,6 +322,7 @@ def plot_utilization(df):
             stranding_mean=("stranding", "mean"),
             stranding_std=("stranding", "std"),
         ).reset_index()
+        print(df_agg)
 
         # Create two synthetic points per group that preserve mean and std
         # For sample std with n=2: points at mean ± std/√2
@@ -338,10 +339,10 @@ def plot_utilization(df):
 
     default_palette = sns.color_palette("pastel")
     custom_palette = [
-        default_palette[2],
-        default_palette[4],
         default_palette[1],
+        default_palette[2],
         default_palette[3],
+        default_palette[4],
     ] + list(default_palette[5:])
 
     log("plotting utilization data")
@@ -356,6 +357,7 @@ def plot_utilization(df):
         # linestyle=self._line,
         edgecolor="dimgray",
         palette=custom_palette,
+        errorbar=None,
     )
     barplot_add_hatches(g, 4)
 
@@ -364,7 +366,7 @@ def plot_utilization(df):
         hatch = hatches[i % len(hatches)]
         legend_patch.set_hatch(f"{hatch}{hatch}")
 
-    g.set_ylabel("Resource stranding [%]    ")
+    g.set_ylabel("Limiting resource [%]    ")
     g.set_xlabel("Resource")
 
     sns.move_legend(

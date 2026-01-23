@@ -150,19 +150,7 @@ impl PoolType {
         let c = emulation_perc + mediation_perc;
         let d = emulation_perc + mediation_perc + passthrough_perc;
 
-        // let rnd = rng.next_u32() % d;
-        // match rnd {
-        //     _ if a <= rnd && rnd < b => PoolType::Emulation,
-        //     _ if b <= rnd && rnd < c => PoolType::Mediation,
-        //     _ if c <= rnd && rnd < d => PoolType::Passthrough,
-        //     _ => panic!("Random number out of bounds"),
-        //     // a..b => PoolType::Emulation,
-        //     // b..c => PoolType::Mediation,
-        //     // c..d => PoolType::Passthrough,
-        // }
-
-        // Deterministic pool assignment based on VM type to model workload restrictions
-        let rnd = vm_type_id * 10 % 99;
+        let rnd = rng.next_u32() % d;
         match rnd {
             _ if a <= rnd && rnd < b => PoolType::Emulation,
             _ if b <= rnd && rnd < c => PoolType::Mediation,
@@ -172,6 +160,18 @@ impl PoolType {
             // b..c => PoolType::Mediation,
             // c..d => PoolType::Passthrough,
         }
+
+        // Deterministic pool assignment based on VM type to model workload restrictions
+        // let rnd = (vm_type_id + 10) * 10 % 99;
+        // match rnd {
+        //     _ if a <= rnd && rnd < b => PoolType::Emulation,
+        //     _ if b <= rnd && rnd < c => PoolType::Mediation,
+        //     _ if c <= rnd && rnd < d => PoolType::Passthrough,
+        //     _ => panic!("Random number out of bounds"),
+        //     // a..b => PoolType::Emulation,
+        //     // b..c => PoolType::Mediation,
+        //     // c..d => PoolType::Passthrough,
+        // }
     }
 
     /// When self is a machine, checks if vm_pool_type VMs can be hosted on it
@@ -264,12 +264,17 @@ impl FirstFitDecreasing {
             true => {
                 let vm_pool_type = PoolType::prng(&mut self.rng, request.vm_type_id);
 
-                let optimal_type = machine_type_candidates.first().expect("VM types are complete. We always have one.");
+                // let optimal_type = machine_type_candidates[(request.vm_type_id as usize % 2) % machine_type_candidates.len()]; // 127k
+                let idx = match vm_pool_type {
+                    PoolType::Mediation => 0,
+                    _ => 1,
+                };
+                let optimal_type = machine_type_candidates[idx as usize % machine_type_candidates.len()];
                 (vm_pool_type, optimal_type)
             },
             false => {
                 let vm_pool_type = PoolType::Unified;
-                let optimal_type = machine_type_candidates.first().expect("VM types are complete. We always have one.");
+                let optimal_type = machine_type_candidates[0];
                 (vm_pool_type, optimal_type)
             },
         };

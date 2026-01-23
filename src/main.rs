@@ -140,7 +140,7 @@ pub enum PoolType {
 }
 
 impl PoolType {
-    pub fn prng(rng: &mut Pcg64Mcg) -> Self {
+    pub fn prng(rng: &mut Pcg64Mcg, vm_type_id: i64) -> Self {
         let emulation_perc = 15;
         let mediation_perc = 75;
         let passthrough_perc = 10;
@@ -150,7 +150,19 @@ impl PoolType {
         let c = emulation_perc + mediation_perc;
         let d = emulation_perc + mediation_perc + passthrough_perc;
 
-        let rnd = rng.next_u32() % d;
+        // let rnd = rng.next_u32() % d;
+        // match rnd {
+        //     _ if a <= rnd && rnd < b => PoolType::Emulation,
+        //     _ if b <= rnd && rnd < c => PoolType::Mediation,
+        //     _ if c <= rnd && rnd < d => PoolType::Passthrough,
+        //     _ => panic!("Random number out of bounds"),
+        //     // a..b => PoolType::Emulation,
+        //     // b..c => PoolType::Mediation,
+        //     // c..d => PoolType::Passthrough,
+        // }
+
+        // Deterministic pool assignment based on VM type to model workload restrictions
+        let rnd = vm_type_id * 10 % 99;
         match rnd {
             _ if a <= rnd && rnd < b => PoolType::Emulation,
             _ if b <= rnd && rnd < c => PoolType::Mediation,
@@ -250,7 +262,7 @@ impl FirstFitDecreasing {
             //     machine_type_candidates[ranges[pool_fragment as usize]]
             // },
             true => {
-                let vm_pool_type = PoolType::prng(&mut self.rng);
+                let vm_pool_type = PoolType::prng(&mut self.rng, request.vm_type_id);
 
                 let optimal_type = machine_type_candidates.first().expect("VM types are complete. We always have one.");
                 (vm_pool_type, optimal_type)

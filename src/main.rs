@@ -131,7 +131,7 @@ impl Machine {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PoolType {
     Emulation,
     Mediation,
@@ -181,9 +181,9 @@ pub struct FirstFitDecreasing {
     fragmented: bool,
     rng: Pcg64Mcg,
 
-    machine_types: HashMap<i64, Vec<Machine>>, // machine_type -> instantiated physical machines
+    machine_types: HashMap<(i64, PoolType), Vec<Machine>>, // (machine_type, pool_type) -> instantiated physical machines
     #[allow(nonstandard_style)]
-    vmId_to_machine: HashMap<i64, (i64, usize)>, // vm_id -> (machine_type, machine_index)
+    vmId_to_machine: HashMap<i64, ((i64, PoolType), usize)>, // vm_id -> ((machine_type, pool_type), machine_index)
 
     cores: f64,
     memory: f64,
@@ -269,15 +269,12 @@ impl FirstFitDecreasing {
         let nic = optimal_type.nic;
 
         // bookkeeping
-        let machines = self.machine_types.entry(optimal_type.machine_id).or_insert(Vec::new());
+        let key = (optimal_type.machine_id, pool_type.clone());
+        let machines = self.machine_types.entry(key.clone()).or_insert(Vec::new());
         let vm = VM { vm_id: request.vm_id, vm_type_id: request.vm_type_id };
         let mut started = None;
         let mut machine_idx = None;
         for (idx, machine) in machines.iter_mut().enumerate() {
-            if self.fragmented && !machine.pool_type.is_compatible_vm(&pool_type) {
-                // TODO measure fragmentation as bottleneck?
-                continue;
-            }
             started = Some(machine.start_vm2(vm.clone(), core, memory, hdd, ssd, nic));
             // TODO measure bottlenecks
             if let Some(StartResult::Ok) = started {
@@ -305,19 +302,20 @@ impl FirstFitDecreasing {
         self.ssd += optimal_type.ssd;
         self.nic += optimal_type.nic;
 
-        self.vmId_to_machine.insert(vm.vm_id, (optimal_type.machine_id, machine_idx.expect("that we asserted Some")));
+        self.vmId_to_machine.insert(vm.vm_id, (key, machine_idx.expect("that we asserted Some")));
     }
 
     pub fn unschedule(&mut self, vm_request: &VmRequest, vm_types: &Vec<VmType>) {
         let vm_type = vm_request.vm_type_id;
         let vm_id = vm_request.vm_id;
-        let (machine_id, machine_idx) = match self.vmId_to_machine.get(&vm_id) {
+        let (key, machine_idx) = match self.vmId_to_machine.get(&vm_id) {
             Some(data) => data.clone(),
             None => panic!("Trying to unschedule VM {} which was never scheduled?", vm_id),
         };
-        let vm_usage = vm_types.iter().find(|vt| vt.vm_type_id == vm_type && vt.machine_id == machine_id);
+        let (machine_id, _pool_type) = &key;
+        let vm_usage = vm_types.iter().find(|vt| vt.vm_type_id == vm_type && vt.machine_id == *machine_id);
         let vm_usage = vm_usage.unwrap();
-        let machine = self.machine_types.get_mut(&machine_id).unwrap().get_mut(machine_idx).unwrap();
+        let machine = self.machine_types.get_mut(&key).unwrap().get_mut(machine_idx).unwrap();
         let _ = machine.stop_vm(vm_id, vm_usage) || panic!("Failed to stop VM {} on machine {}", vm_id, machine_id);
 
         self.cores -= vm_usage.core;
@@ -328,7 +326,7 @@ impl FirstFitDecreasing {
 
         // Just because a machines becomes empty, it doesnt disappear. It was already bought.
         // if machine.vms.len() == 0 {
-        //     self.machine_types.get_mut(&machine_id).unwrap().remove(machine_idx);
+        //     self.machine_types.get_mut(&key).unwrap().remove(machine_idx);
         // }
         // self.vmId_to_machine.remove(&vm_id);
     }

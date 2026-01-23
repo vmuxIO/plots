@@ -9,6 +9,8 @@ from dataclasses import dataclass
 import argparse
 from math import nan as NaN
 from plotting import HATCHES
+import pickle
+import os
 
 def log(msg):
     print(msg, flush=True)
@@ -45,6 +47,10 @@ def setup_parser():
                         help='''Path to the output plot
                              (default: packet_loss.pdf)''',
                         default='packingtrace.pdf'
+                        )
+    parser.add_argument('--cache',
+                        action='store_true',
+                        help='Cache crunched utilization data to /tmp'
                         )
     for color in COLORS:
         parser.add_argument(f'--{color}',
@@ -292,18 +298,43 @@ def plot_utilization(df):
         "nic": "NIC",
     }
 
-    log("cruching utilization data")
-    dfs = []
-    for resource in ["cores", "memory", "hdd", "ssd", "nic"]:
-        d = dict()
-        d["time"] = df["time"]
-        d["utilization"] = df[resource] / df["pool_size"]
-        d["stranding"] = 100 * (1 - (df[resource] / df["pool_size"]))
-        d["resource"] = resource_map[resource]
-        d["Pool"] = df["hue"]
-        dfs += [ pd.DataFrame(d) ]
-    df = pd.concat(dfs, ignore_index=True)
-    df = df[df["resource"] != "HDD"]
+    cache_path = f"/tmp/packingtrace_utilization_{os.getuid()}.pkl"
+
+    if args.cache and os.path.exists(cache_path):
+        log(f"loading cached utilization data from {cache_path}")
+        df = pickle.load(open(cache_path, "rb"))
+    else:
+        log("crunching utilization data")
+        dfs = []
+        for resource in ["cores", "memory", "hdd", "ssd", "nic"]:
+            d = dict()
+            d["time"] = df["time"]
+            d["utilization"] = df[resource] / df["pool_size"]
+            d["stranding"] = 100 * (1 - (df[resource] / df["pool_size"]))
+            d["resource"] = resource_map[resource]
+            d["Pool"] = df["hue"]
+            dfs += [ pd.DataFrame(d) ]
+        df = pd.concat(dfs, ignore_index=True)
+        df = df[df["resource"] != "HDD"]
+
+        log("aggregating data (mean/std)")
+        df_agg = df.groupby(["resource", "Pool"]).agg(
+            stranding_mean=("stranding", "mean"),
+            stranding_std=("stranding", "std"),
+        ).reset_index()
+
+        # Create two synthetic points per group that preserve mean and std
+        # For sample std with n=2: points at mean ± std/√2
+        log("creating synthetic data points")
+        rows = []
+        for _, row in df_agg.iterrows():
+            mean, std = row["stranding_mean"], row["stranding_std"]
+            offset = std / np.sqrt(2)
+            rows.append({"resource": row["resource"], "Pool": row["Pool"], "stranding": mean - offset})
+            rows.append({"resource": row["resource"], "Pool": row["Pool"], "stranding": mean + offset})
+        df = pd.DataFrame(rows)
+
+        pickle.dump(df, open(cache_path, "wb"))
 
     default_palette = sns.color_palette("pastel")
     custom_palette = [

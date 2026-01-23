@@ -139,6 +139,15 @@ pub enum PoolType {
     Unified,
 }
 
+impl From<&PoolType> for usize {
+      fn from(pool_type: &PoolType) -> usize {
+          match pool_type {
+              PoolType::Mediation => 0,
+              _ => 1,
+          }
+    }
+}
+
 impl PoolType {
     pub fn prng(rng: &mut Pcg64Mcg, vm_type_id: i64) -> Self {
         let emulation_perc = 11;
@@ -263,13 +272,7 @@ impl FirstFitDecreasing {
             // },
             true => {
                 let vm_pool_type = PoolType::prng(&mut self.rng, request.vm_type_id);
-
-                // let optimal_type = machine_type_candidates[(request.vm_type_id as usize % 2) % machine_type_candidates.len()]; // 127k
-                let idx = match vm_pool_type {
-                    PoolType::Mediation => 0,
-                    _ => 1,
-                };
-                let optimal_type = machine_type_candidates[idx as usize % machine_type_candidates.len()];
+                let optimal_type = machine_type_candidates[Into::<usize>::into(&vm_pool_type) % machine_type_candidates.len()];
                 (vm_pool_type, optimal_type)
             },
             false => {

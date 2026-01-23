@@ -355,6 +355,7 @@ def plot_utilization(df):
         # label=f'{self._name}',
         # color=self._line_color,
         # linestyle=self._line,
+        order=["CPU", "Memory", "SSD", "NIC"],
         edgecolor="dimgray",
         palette=custom_palette,
         errorbar=None,

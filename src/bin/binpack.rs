@@ -9,42 +9,63 @@
 //     Not every VM flavor can run on every machine type -- only
 //     combinations present in `vmType` are valid placements.
 //
-// MIP formulation:
+// Key optimization: VMs sharing a vmTypeId are interchangeable (identical
+// resource footprint on every machine type). Instead of one binary variable
+// per individual VM, we use one integer variable per unique VM type,
+// representing how many VMs of that type are placed on each machine instance.
+// At t=0, 860k active VMs collapse to ~245 unique types.
+//
+// MIP formulation (aggregated):
 //   Sets:
-//     V       = active VMs
+//     G       = unique VM type groups (by vmTypeId), each with count_g VMs
 //     T       = machine types (machineId values)
-//     T(v)    = machine types valid for VM v
+//     T(g)    = machine types valid for group g
 //     J(t)    = instance indices {0..max_j(t)} per machine type t
 //
 //   Decision variables:
-//     x[v,t,j] in {0,1}  -- VM v is assigned to instance j of type t
-//     y[t,j]   in {0,1}  -- instance j of type t is used
+//     n[g,t,j] integer in [0, count_g] -- # of VMs from group g on instance (t,j)
+//     y[t,j]   in {0,1}               -- instance j of type t is used
 //
 //   Objective:
 //     minimize  sum_{t,j} y[t,j]
 //
 //   Constraints:
-//     (1) Assignment:       sum_{t in T(v), j in J(t)} x[v,t,j] = 1   for all v
-//     (2) Capacity (per d): sum_v resource_d[v,t] * x[v,t,j] <= y[t,j] for all t,j,d
-//     (3) Symmetry break:   y[t,j] <= y[t,j-1]                         for j >= 1
+//     (1) Assignment:       sum_{t in T(g), j in J(t)} n[g,t,j] = count_g  for all g
+//     (2) Capacity (per d): sum_g resource_d[g,t] * n[g,t,j] <= y[t,j]     for all t,j,d
+//     (3) Symmetry break:   y[t,j] <= y[t,j-1]                              for j >= 1
 //
-//   Capacity constraint (2) also implies linking: if any x[v,t,j]=1 and
-//   resource_d > 0, then y[t,j] >= resource_d > 0, forcing y[t,j] = 1.
+//   Capacity constraint (2) also implies linking: if any n[g,t,j] > 0 and
+//   resource_d > 0, then y[t,j] >= resource_d * n > 0, forcing y[t,j] = 1.
 //
 // Upper bound on max_j(t):
 //   For each machine type t, we sum the resource requirements of all active
 //   VMs assignable to t (per dimension) and take ceil(max across dims).
-//   This is a valid lower bound on machines needed for that type and avoids
-//   creating excess variables while guaranteeing feasibility.
+//   This is conservative: it assumes every assignable VM could land on type t.
 //
-//   | VMs | MIP vars | Solve time | Machines |
-//   |-----|----------|------------|----------|
-//   | 50  | 3,980    | 0.8s       | 11       |
-//   | 100 | 8,582    | 2.2s       | 13       |
-//   | 200 | 21,218   | 10.1s      | 21       |
-//   | 220 | 23,902   | 46.6s      | 22       |
-//   | 230 | 26,228   | 11.8s      | 23       |
-//   | 500 | 129,380  | killed     | -        |
+// Previous formulation (per-VM binary variables):
+//   Used binary x[v,t,j] in {0,1} for each individual VM, machine type,
+//   and instance. This led to millions of variables even for moderate VM
+//   counts and could not scale beyond ~230 VMs.
+//
+//   | VMs | Unique types | MIP vars  | Solve time | Machines |
+//   |-----|--------------|-----------|------------|----------|
+//   | 50  | -            | 3,980     | 0.8s       | 11       |
+//   | 100 | -            | 8,582     | 2.2s       | 13       |
+//   | 200 | -            | 21,218    | 10.1s      | 21       |
+//   | 220 | -            | 23,902    | 46.6s      | 22       |
+//   | 230 | -            | 26,228    | 11.8s      | 23       |
+//   | 500 | -            | 129,380   | killed     | -        |
+//   (above times are from the old per-VM binary formulation)
+//
+// Current formulation (aggregated integer variables):
+//   Replaces per-VM binaries with per-vmTypeId integers n[g,t,j].
+//   This is an exact reformulation (same optimal objective).
+//
+//   | VMs   | Unique types | MIP vars | Solve time | Machines |
+//   |-------|--------------|----------|------------|----------|
+//   | 100   | 7            | 1,156    | 0.4s       | 13       |
+//   | 500   | 8            | 2,992    | 18.3s      | 58       |
+//   | 1,000 | 8            | 4,918    | 29.1s      | 106      |
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -83,6 +104,10 @@ struct Args {
     /// Only consider the first N active VMs (for testing)
     #[arg(long)]
     max_vms: Option<usize>,
+
+    /// Number of solver threads (default: all CPUs)
+    #[arg(long)]
+    threads: Option<u32>,
 }
 
 #[derive(Debug, Clone)]
@@ -96,13 +121,12 @@ struct VmTypePlacement {
     nic: f64,
 }
 
-#[derive(Debug, Clone)]
-struct ActiveVm {
-    _vm_id: i64,
+struct VmTypeGroup {
     vm_type_id: i64,
+    count: usize,
 }
 
-struct XEntry {
+struct NEntry {
     machine_id: i64,
     instance_j: usize,
     var: good_lp::Variable,
@@ -138,17 +162,50 @@ fn load_vm_type_placements(conn: &Connection) -> Result<Vec<VmTypePlacement>, Bo
     Ok(rows.collect::<Result<Vec<_>, _>>()?)
 }
 
-fn load_active_vms(conn: &Connection, timestamp: f64) -> Result<Vec<ActiveVm>, Box<dyn Error>> {
-    let mut stmt = conn.prepare(
-        "SELECT vmId, vmTypeId FROM vm WHERE starttime <= ?1 AND (endtime IS NULL OR endtime > ?1)",
-    )?;
-    let rows = stmt.query_map([timestamp], |row| {
-        Ok(ActiveVm {
-            _vm_id: row.get(0)?,
-            vm_type_id: row.get(1)?,
-        })
-    })?;
-    Ok(rows.collect::<Result<Vec<_>, _>>()?)
+fn load_active_vm_type_counts(
+    conn: &Connection,
+    timestamp: f64,
+    max_vms: Option<usize>,
+) -> Result<(Vec<VmTypeGroup>, usize), Box<dyn Error>> {
+    // If max_vms is set, we need to load individual VMs first to truncate,
+    // then aggregate. Otherwise we can aggregate directly in SQL.
+    if let Some(max) = max_vms {
+        let mut stmt = conn.prepare(
+            "SELECT vmTypeId FROM vm WHERE starttime <= ?1 AND (endtime IS NULL OR endtime > ?1)",
+        )?;
+        let mut vm_types: Vec<i64> = stmt
+            .query_map([timestamp], |row| row.get(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+        let total = vm_types.len();
+        vm_types.truncate(max);
+        let mut counts: HashMap<i64, usize> = HashMap::new();
+        for vt in &vm_types {
+            *counts.entry(*vt).or_default() += 1;
+        }
+        let groups: Vec<VmTypeGroup> = counts
+            .into_iter()
+            .map(|(vm_type_id, count)| VmTypeGroup { vm_type_id, count })
+            .collect();
+        println!("  {} active VMs (truncated to {}), {} unique types", total, vm_types.len(), groups.len());
+        Ok((groups, vm_types.len()))
+    } else {
+        let mut stmt = conn.prepare(
+            "SELECT vmTypeId, COUNT(*) FROM vm \
+             WHERE starttime <= ?1 AND (endtime IS NULL OR endtime > ?1) \
+             GROUP BY vmTypeId",
+        )?;
+        let groups: Vec<VmTypeGroup> = stmt
+            .query_map([timestamp], |row| {
+                Ok(VmTypeGroup {
+                    vm_type_id: row.get(0)?,
+                    count: row.get::<_, i64>(1)? as usize,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        let total: usize = groups.iter().map(|g| g.count).sum();
+        println!("  {} active VMs, {} unique types", total, groups.len());
+        Ok((groups, total))
+    }
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -162,15 +219,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("  {} placement entries", all_placements.len());
 
     println!("Loading active VMs at timestamp {}...", args.timestamp);
-    let mut active_vms = load_active_vms(&conn, args.timestamp)?;
-    if let Some(max) = args.max_vms {
-        active_vms.truncate(max);
-        println!("  {} active VMs (truncated to {})", active_vms.len(), max);
-    } else {
-        println!("  {} active VMs", active_vms.len());
-    }
+    let (vm_type_groups, total_vms) =
+        load_active_vm_type_counts(&conn, args.timestamp, args.max_vms)?;
 
-    if active_vms.is_empty() {
+    if vm_type_groups.is_empty() {
         println!("No active VMs at this timestamp.");
         return Ok(());
     }
@@ -188,10 +240,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Count VMs assignable to each machine type, collect reachable machine types
     let mut vms_per_machine_type: HashMap<i64, usize> = HashMap::new();
-    for vm in &active_vms {
-        if let Some(placements) = placements_by_vm_type.get(&vm.vm_type_id) {
+    for g in &vm_type_groups {
+        if let Some(placements) = placements_by_vm_type.get(&g.vm_type_id) {
             for p in placements {
-                *vms_per_machine_type.entry(p.machine_id).or_default() += 1;
+                *vms_per_machine_type.entry(p.machine_id).or_default() += g.count;
             }
         }
     }
@@ -210,15 +262,16 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut sum_ssd = 0.0_f64;
         let mut sum_nic = 0.0_f64;
 
-        for vm in &active_vms {
-            if let Some(placements) = placements_by_vm_type.get(&vm.vm_type_id) {
+        for g in &vm_type_groups {
+            if let Some(placements) = placements_by_vm_type.get(&g.vm_type_id) {
                 for p in placements {
                     if p.machine_id == t {
-                        sum_core += p.core;
-                        sum_mem += p.memory;
-                        sum_hdd += p.hdd;
-                        sum_ssd += p.ssd;
-                        sum_nic += p.nic;
+                        let c = g.count as f64;
+                        sum_core += p.core * c;
+                        sum_mem += p.memory * c;
+                        sum_hdd += p.hdd * c;
+                        sum_ssd += p.ssd * c;
+                        sum_nic += p.nic * c;
                     }
                 }
             }
@@ -251,19 +304,19 @@ fn main() -> Result<(), Box<dyn Error>> {
         y.insert(t, y_vec);
     }
 
-    // x variables per VM
-    let bar = progress_bar(active_vms.len() as u64, "Creating x variables");
-    let mut x_by_vm: Vec<Vec<XEntry>> = Vec::with_capacity(active_vms.len());
-    for vm in &active_vms {
+    // n[g][...] variables per VM type group
+    let bar = progress_bar(vm_type_groups.len() as u64, "Creating n variables");
+    let mut n_by_group: Vec<Vec<NEntry>> = Vec::with_capacity(vm_type_groups.len());
+    for g in &vm_type_groups {
         bar.inc(1);
         let mut entries = Vec::new();
-        if let Some(placements) = placements_by_vm_type.get(&vm.vm_type_id) {
+        if let Some(placements) = placements_by_vm_type.get(&g.vm_type_id) {
             for placement in placements {
                 let t = placement.machine_id;
                 let max_j = max_instances[&t];
                 for j in 0..max_j {
-                    let var = vars.add(variable().binary());
-                    entries.push(XEntry {
+                    let var = vars.add(variable().integer().min(0).max(g.count as f64));
+                    entries.push(NEntry {
                         machine_id: t,
                         instance_j: j,
                         var,
@@ -272,13 +325,13 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
             }
         }
-        x_by_vm.push(entries);
+        n_by_group.push(entries);
     }
     bar.finish_and_clear();
 
-    let total_x: usize = x_by_vm.iter().map(|e| e.len()).sum();
+    let total_n: usize = n_by_group.iter().map(|e| e.len()).sum();
     let total_y: usize = y.values().map(|v| v.len()).sum();
-    println!("MIP variables: {} x + {} y = {} total", total_x, total_y, total_x + total_y);
+    println!("MIP variables: {} n + {} y = {} total", total_n, total_y, total_n + total_y);
 
     // Objective: minimize sum of all y
     let mut objective = Expression::with_capacity(total_y);
@@ -298,24 +351,27 @@ fn main() -> Result<(), Box<dyn Error>> {
     if args.mip_gap > 0.0 {
         model = model.set_mip_rel_gap(args.mip_gap)?;
     }
+    if let Some(threads) = args.threads {
+        model = model.set_threads(threads);
+    }
 
-    // Constraint 1: each VM assigned exactly once
-    let bar = progress_bar(active_vms.len() as u64, "Assignment constraints");
-    for entries in &x_by_vm {
+    // Constraint 1: each VM type group fully assigned
+    let bar = progress_bar(vm_type_groups.len() as u64, "Assignment constraints");
+    for (g_idx, g) in vm_type_groups.iter().enumerate() {
         bar.inc(1);
-        let sum: Expression = entries.iter().map(|e| e.var).sum();
-        model.add_constraint(sum.eq(1));
+        let sum: Expression = n_by_group[g_idx].iter().map(|e| e.var).sum();
+        model.add_constraint(sum.eq(g.count as i32));
     }
     bar.finish_and_clear();
 
-    // Pre-index: (machine_id, j) -> list of (vm_idx, entry_idx)
-    let mut vms_by_instance: HashMap<(i64, usize), Vec<(usize, usize)>> = HashMap::new();
-    for (v_idx, entries) in x_by_vm.iter().enumerate() {
+    // Pre-index: (machine_id, j) -> list of (group_idx, entry_idx)
+    let mut entries_by_instance: HashMap<(i64, usize), Vec<(usize, usize)>> = HashMap::new();
+    for (g_idx, entries) in n_by_group.iter().enumerate() {
         for (e_idx, entry) in entries.iter().enumerate() {
-            vms_by_instance
+            entries_by_instance
                 .entry((entry.machine_id, entry.instance_j))
                 .or_default()
-                .push((v_idx, e_idx));
+                .push((g_idx, e_idx));
         }
     }
 
@@ -333,9 +389,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             let mut ssd_expr = Expression::default();
             let mut nic_expr = Expression::default();
 
-            if let Some(vm_entries) = vms_by_instance.get(&(t, j)) {
-                for &(v_idx, e_idx) in vm_entries {
-                    let entry = &x_by_vm[v_idx][e_idx];
+            if let Some(instance_entries) = entries_by_instance.get(&(t, j)) {
+                for &(g_idx, e_idx) in instance_entries {
+                    let entry = &n_by_group[g_idx][e_idx];
                     core_expr.add_mul(entry.placement.core, entry.var);
                     mem_expr.add_mul(entry.placement.memory, entry.var);
                     hdd_expr.add_mul(entry.placement.hdd, entry.var);
@@ -364,7 +420,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // -- Solve --
-    println!("Solving...");
+    println!("Solving ({} VMs, {} types, {} vars)...", total_vms, vm_type_groups.len(), total_n + total_y);
     let solve_start = std::time::Instant::now();
     let solution = model.solve()?;
     let solve_time = solve_start.elapsed();

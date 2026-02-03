@@ -10,7 +10,7 @@ import pickle
 import argparse
 from enum import Enum
 from math import nan as NaN
-from ortools.linear_solver import pywraplp
+# from ortools.linear_solver import pywraplp
 import time
 import cProfile
 import pstats

@@ -31,6 +31,10 @@ struct Args {
     /// Enable verbose solver output
     #[arg(short, long)]
     verbose: bool,
+
+    /// Only consider the first N active VMs (for testing)
+    #[arg(long)]
+    max_vms: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -110,8 +114,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("  {} placement entries", all_placements.len());
 
     println!("Loading active VMs at timestamp {}...", args.timestamp);
-    let active_vms = load_active_vms(&conn, args.timestamp)?;
-    println!("  {} active VMs", active_vms.len());
+    let mut active_vms = load_active_vms(&conn, args.timestamp)?;
+    if let Some(max) = args.max_vms {
+        active_vms.truncate(max);
+        println!("  {} active VMs (truncated to {})", active_vms.len(), max);
+    } else {
+        println!("  {} active VMs", active_vms.len());
+    }
 
     if active_vms.is_empty() {
         println!("No active VMs at this timestamp.");

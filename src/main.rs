@@ -211,6 +211,12 @@ pub struct FirstFitDecreasing {
     hdd: f64,
     ssd: f64,
     nic: f64,
+
+    core_bottleneck_f: Vec<f64>,
+    memory_bottleneck_f: Vec<f64>,
+    hdd_bottleneck_f: Vec<f64>,
+    ssd_bottleneck_f: Vec<f64>,
+    nic_bottleneck_f: Vec<f64>,
 }
 
 impl FirstFitDecreasing {
@@ -219,7 +225,6 @@ impl FirstFitDecreasing {
             iteration: 0,
             basename: String::from(&args.output),
             fragmented: args.fragmented,
-            // TODO test with 4 random seeds
             rng: Pcg64Mcg::new(1),
             machine_types: HashMap::new(),
             vmId_to_machine: HashMap::new(),
@@ -228,6 +233,11 @@ impl FirstFitDecreasing {
             hdd: 0.0,
             ssd: 0.0,
             nic: 0.0,
+            core_bottleneck_f: Vec::new(),
+            memory_bottleneck_f: Vec::new(),
+            hdd_bottleneck_f: Vec::new(),
+            ssd_bottleneck_f: Vec::new(),
+            nic_bottleneck_f: Vec::new(),
         }
     }
 
@@ -245,6 +255,12 @@ impl FirstFitDecreasing {
     }
 
     pub fn schedule(&mut self, request: &VmRequest, vm_types: &Vec<VmType>) {
+        let mut core_bottlenecks = 0;
+        let mut memory_bottlenecks = 0;
+        let mut hdd_bottlenecks = 0;
+        let mut ssd_bottlenecks = 0;
+        let mut nic_bottlenecks = 0;
+
         let vm_type = request.vm_type_id;
         let machine_type_candidates = vm_types
             .iter()
@@ -296,10 +312,17 @@ impl FirstFitDecreasing {
         let mut machine_idx = None;
         for (idx, machine) in machines.iter_mut().enumerate() {
             started = Some(machine.start_vm2(vm.clone(), core, memory, hdd, ssd, nic));
-            // TODO measure bottlenecks
-            if let Some(StartResult::Ok) = started {
-                machine_idx = Some(idx);
-                break;
+            match &started {
+                Some(StartResult::CoreBottleneck) => core_bottlenecks += 1,
+                Some(StartResult::MemoryBottleneck) => memory_bottlenecks += 1,
+                Some(StartResult::HddBottleneck) => hdd_bottlenecks += 1,
+                Some(StartResult::SsdBottleneck) => ssd_bottlenecks += 1,
+                Some(StartResult::NicBottleneck) => nic_bottlenecks += 1,
+                Some(StartResult::Ok) => {
+                    machine_idx = Some(idx);
+                    break;
+                },
+                None => unreachable!(),
             }
         }
 
@@ -314,7 +337,20 @@ impl FirstFitDecreasing {
         assert!(machine_idx.is_some());
 
         // collect bottleneck statistics
-        // TODO
+        let total_bottlenecks = core_bottlenecks + memory_bottlenecks + hdd_bottlenecks + ssd_bottlenecks + nic_bottlenecks;
+        if total_bottlenecks > 0 {
+            self.core_bottleneck_f.push(core_bottlenecks as f64 / total_bottlenecks as f64);
+            self.memory_bottleneck_f.push(memory_bottlenecks as f64 / total_bottlenecks as f64);
+            self.hdd_bottleneck_f.push(hdd_bottlenecks as f64 / total_bottlenecks as f64);
+            self.ssd_bottleneck_f.push(ssd_bottlenecks as f64 / total_bottlenecks as f64);
+            self.nic_bottleneck_f.push(nic_bottlenecks as f64 / total_bottlenecks as f64);
+        } else {
+            self.core_bottleneck_f.push(0.0);
+            self.memory_bottleneck_f.push(0.0);
+            self.hdd_bottleneck_f.push(0.0);
+            self.ssd_bottleneck_f.push(0.0);
+            self.nic_bottleneck_f.push(0.0);
+        }
 
         self.cores += optimal_type.core;
         self.memory += optimal_type.memory;
@@ -352,15 +388,23 @@ impl FirstFitDecreasing {
     }
 
     pub fn simulate(&mut self, vm_requests: &Vec<VmRequest>, vm_types: &Vec<VmType>) -> DataFrame {
-        let checkpoint_interval = 100_000;
+        let checkpoint_interval = 500_000;
         let mut time: f64 = f64::MIN; // log the newest point in time reached by our simulation
+
         let mut time_series_time = Vec::with_capacity(vm_requests.len());
         let mut time_series_pool_size: Vec<i64> = Vec::with_capacity(vm_requests.len());
+
         let mut time_series_cores = Vec::with_capacity(vm_requests.len());
         let mut time_series_memory = Vec::with_capacity(vm_requests.len());
         let mut time_series_hdd = Vec::with_capacity(vm_requests.len());
         let mut time_series_ssd = Vec::with_capacity(vm_requests.len());
         let mut time_series_nic = Vec::with_capacity(vm_requests.len());
+
+        let mut time_series_core_bottleneck = Vec::with_capacity(vm_requests.len());
+        let mut time_series_memory_bottleneck = Vec::with_capacity(vm_requests.len());
+        let mut time_series_hdd_bottleneck = Vec::with_capacity(vm_requests.len());
+        let mut time_series_ssd_bottleneck = Vec::with_capacity(vm_requests.len());
+        let mut time_series_nic_bottleneck = Vec::with_capacity(vm_requests.len());
 
         // let mut time_series_ = Vec::with_capacity(vm_requests.len()); TODO
 
@@ -390,6 +434,11 @@ impl FirstFitDecreasing {
                     "hdd" => &time_series_hdd,
                     "ssd" => &time_series_ssd,
                     "nic" => &time_series_nic,
+                    "core_bottleneck" => &time_series_core_bottleneck,
+                    "memory_bottleneck" => &time_series_memory_bottleneck,
+                    "hdd_bottleneck" => &time_series_hdd_bottleneck,
+                    "ssd_bottleneck" => &time_series_ssd_bottleneck,
+                    "nic_bottleneck" => &time_series_nic_bottleneck,
                     "fragmented" => vec![self.fragmented; time_series_time.len()],
                 ).expect("Failed to create DataFrame");
                 self.checkpoint(&mut df);
@@ -415,7 +464,27 @@ impl FirstFitDecreasing {
                 time_series_hdd.push(self.hdd);
                 time_series_ssd.push(self.ssd);
                 time_series_nic.push(self.nic);
-                // TODO find bottlenecks
+                // find bottlenecks
+                time_series_core_bottleneck.push(
+                    self.core_bottleneck_f.iter().sum::<f64>() / self.core_bottleneck_f.len() as f64
+                );
+                time_series_memory_bottleneck.push(
+                    self.memory_bottleneck_f.iter().sum::<f64>() / self.memory_bottleneck_f.len() as f64
+                );
+                time_series_hdd_bottleneck.push(
+                    self.hdd_bottleneck_f.iter().sum::<f64>() / self.hdd_bottleneck_f.len() as f64
+                );
+                time_series_ssd_bottleneck.push(
+                    self.ssd_bottleneck_f.iter().sum::<f64>() / self.ssd_bottleneck_f.len() as f64
+                );
+                time_series_nic_bottleneck.push(
+                    self.nic_bottleneck_f.iter().sum::<f64>() / self.nic_bottleneck_f.len() as f64
+                );
+                self.core_bottleneck_f.clear();
+                self.memory_bottleneck_f.clear();
+                self.hdd_bottleneck_f.clear();
+                self.ssd_bottleneck_f.clear();
+                self.nic_bottleneck_f.clear();
             }
         }
         bar.finish();
@@ -429,6 +498,11 @@ impl FirstFitDecreasing {
             "hdd" => &time_series_hdd,
             "ssd" => &time_series_ssd,
             "nic" => &time_series_nic,
+            "core_bottleneck" => &time_series_core_bottleneck,
+            "memory_bottleneck" => &time_series_memory_bottleneck,
+            "hdd_bottleneck" => &time_series_hdd_bottleneck,
+            "ssd_bottleneck" => &time_series_ssd_bottleneck,
+            "nic_bottleneck" => &time_series_nic_bottleneck,
             "fragmented" => vec![self.fragmented; time_series_time.len()],
         ).expect("Failed to create DataFrame");
 

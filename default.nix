@@ -1,11 +1,15 @@
 {pkgs ? import (fetchTarball "https://nixos.org/channels/nixos-unstable/nixexprs.tar.xz") {} }:
   pkgs.mkShell {
+    LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
     buildInputs = with pkgs; [
       marimo
       cargo
       gdb
       cargo-watch
       rust-analyzer
+      cmake
+      clang
+      libclang.lib
   ] ++ (with pkgs.python3.pkgs; [
       black # auto formatting
       flake8 # annoying "good practice" annotations

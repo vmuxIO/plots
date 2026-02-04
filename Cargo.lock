@@ -1194,6 +1194,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "good_lp",
+ "highs",
  "indicatif",
  "polars",
  "rand_pcg",

@@ -1,85 +1,52 @@
-// Multi-dimensional bin packing via MIP (Mixed Integer Programming).
+// Optimal multi-dimensional vector bin packing for Azure VM packing traces.
 //
-// Data model (Azure Packing Trace):
-//   - "Items" are VMs, queried from the `vm` table at a given timestamp.
-//   - "Bin types" are physical machine types, identified by `machineId`.
-//   - Each VM has a `vmTypeId` (flavor). The `vmType` table maps each
-//     (vmTypeId, machineId) pair to a 5-dimensional resource vector
-//     (core, memory, hdd, ssd, nic), all normalized to [0, 1].
-//     Not every VM flavor can run on every machine type -- only
-//     combinations present in `vmType` are valid placements.
+// Problem:
+//   Given a snapshot of active VMs at a point in time, find the minimum
+//   number of physical machines (bins) needed to host all VMs.  Each VM
+//   has a type (vmTypeId) that determines its 5-dimensional resource
+//   footprint (core, memory, hdd, ssd, nic — all normalized to [0,1]).
+//   Each physical machine has a type (machineId) with unit capacity in
+//   every dimension.  Not every VM type fits on every machine type; only
+//   (vmTypeId, machineId) pairs present in the vmType table are valid.
+//   VMs sharing a vmTypeId are interchangeable.
 //
-// Key optimization: VMs sharing a vmTypeId are interchangeable (identical
-// resource footprint on every machine type). Instead of one binary variable
-// per individual VM, we use one integer variable per unique VM type,
-// representing how many VMs of that type are placed on each machine instance.
-// At t=0, 860k active VMs collapse to ~245 unique types.
+//   At t=0 the Azure trace has ~860k active VMs collapsing to ~245
+//   unique types across 35 machine types.  A direct MIP formulation
+//   (one variable per VM × machine-type × instance) cannot scale past
+//   ~1000 VMs.  The goal is to find the provably optimal packing for
+//   the full dataset.
 //
-// MIP formulation (aggregated):
-//   Sets:
-//     G       = unique VM type groups (by vmTypeId), each with count_g VMs
-//     T       = machine types (machineId values)
-//     T(g)    = machine types valid for group g
-//     J(t)    = instance indices {0..max_j(t)} per machine type t
+//   For this problem, only Cargo.{toml, lock}, src/bin/binpack.rs and
+//   the dataset file are needed. Ignore the other files in this repo.
+
+
+
+// Approach:
+// Algorithm — column generation (Dantzig-Wolfe decomposition):
 //
-//   Decision variables:
-//     n[g,t,j] integer in [0, count_g] -- # of VMs from group g on instance (t,j)
-//     y[t,j]   in {0,1}               -- instance j of type t is used
+//   Master LP:  minimize total machines.
+//     Variables: λ_p ≥ 0 for each packing pattern p.
+//     Constraints: for each VM type group g, the patterns must
+//                  collectively provide exactly count_g slots.
 //
-//   Objective:
-//     minimize  sum_{t,j} y[t,j]
+//   Pricing subproblem (per machine type): multi-dimensional bounded
+//   knapsack that finds the most valuable new packing pattern given
+//   dual prices from the master LP.  ~200 integer vars, 5 constraints.
 //
-//   Constraints:
-//     (1) Assignment:       sum_{t in T(g), j in J(t)} n[g,t,j] = count_g  for all g
-//     (2) Capacity (per d): sum_g resource_d[g,t] * n[g,t,j] <= y[t,j]     for all t,j,d
-//     (3) Symmetry break:   y[t,j] <= y[t,j-1]                              for j >= 1
-//
-//   Capacity constraint (2) also implies linking: if any n[g,t,j] > 0 and
-//   resource_d > 0, then y[t,j] >= resource_d * n > 0, forcing y[t,j] = 1.
-//
-// Upper bound on max_j(t):
-//   For each machine type t, we sum the resource requirements of all active
-//   VMs assignable to t (per dimension) and take ceil(max across dims).
-//   This is conservative: it assumes every assignable VM could land on type t.
-//
-// Previous formulation (per-VM binary variables):
-//   Used binary x[v,t,j] in {0,1} for each individual VM, machine type,
-//   and instance. This led to millions of variables even for moderate VM
-//   counts and could not scale beyond ~230 VMs.
-//
-//   | VMs | Unique types | MIP vars  | Solve time | Machines |
-//   |-----|--------------|-----------|------------|----------|
-//   | 50  | -            | 3,980     | 0.8s       | 11       |
-//   | 100 | -            | 8,582     | 2.2s       | 13       |
-//   | 200 | -            | 21,218    | 10.1s      | 21       |
-//   | 220 | -            | 23,902    | 46.6s      | 22       |
-//   | 230 | -            | 26,228    | 11.8s      | 23       |
-//   | 500 | -            | 129,380   | killed     | -        |
-//   (above times are from the old per-VM binary formulation)
-//
-// Current formulation (aggregated integer variables):
-//   Replaces per-VM binaries with per-vmTypeId integers n[g,t,j].
-//   This is an exact reformulation (same optimal objective).
-//
-//   | VMs   | Unique types | MIP vars | Solve time | Machines |
-//   |-------|--------------|----------|------------|----------|
-//   | 100   | 7            | 1,156    | 0.4s       | 13       |
-//   | 500   | 8            | 2,992    | 18.3s      | 58       |
-//   | 1,000 | 8            | 4,918    | 29.1s      | 106      |
+//   After the LP relaxation converges, a restricted MIP over the
+//   generated columns yields an integer-optimal solution.  For vector
+//   bin packing the LP gap is almost always 0 or 1, so
+//   ceil(LP) == MIP proves optimality.
 
 use std::collections::HashMap;
 use std::error::Error;
 
 use clap::Parser;
-use good_lp::{
-    variable, Expression, ProblemVariables, Solution, SolverModel,
-};
-use good_lp::solvers::highs::highs;
-use indicatif::{ProgressBar, ProgressStyle};
+use highs::{ColProblem, Sense, HighsModelStatus};
 use rusqlite::Connection;
 
 #[derive(Parser)]
-#[command(name = "binpack", about = "Solve bin packing MIP for Azure VM traces")]
+#[command(name = "binpack", about = "Solve VM bin packing via column generation")]
 struct Args {
     /// Path to the SQLite database file
     #[arg(short, long, default_value = "packing_trace_zone_a_v1.sqlite")]
@@ -89,13 +56,13 @@ struct Args {
     #[arg(short, long)]
     timestamp: f64,
 
-    /// Time limit for the MIP solver in seconds (0 = no limit)
+    /// Time limit for the restricted MIP solver in seconds
     #[arg(long, default_value_t = 300.0)]
     time_limit: f64,
 
     /// MIP relative gap tolerance (e.g. 0.01 for 1%)
     #[arg(long, default_value_t = 0.0)]
-    mip_gap: f32,
+    mip_gap: f64,
 
     /// Enable verbose solver output
     #[arg(short, long)]
@@ -121,28 +88,35 @@ struct VmTypePlacement {
     nic: f64,
 }
 
+impl VmTypePlacement {
+    fn resources(&self) -> [f64; 5] {
+        [self.core, self.memory, self.hdd, self.ssd, self.nic]
+    }
+}
+
 struct VmTypeGroup {
     vm_type_id: i64,
     count: usize,
 }
 
-struct NEntry {
+/// A packing pattern: what goes on one physical machine.
+#[derive(Debug, Clone)]
+struct Pattern {
     machine_id: i64,
-    instance_j: usize,
-    var: good_lp::Variable,
-    placement: VmTypePlacement,
+    /// Sparse (group_index, count) pairs.
+    items: Vec<(usize, f64)>,
 }
 
-fn progress_bar(len: u64, message: &str) -> ProgressBar {
-    let bar = ProgressBar::new(len);
-    bar.set_style(
-        ProgressStyle::default_bar()
-            .template("{msg} {wide_bar} {pos}/{len} [{elapsed_precise}]")
-            .unwrap(),
-    );
-    bar.set_message(message.to_string());
-    bar
+/// Compatibility entry: one VM type group on one machine type.
+struct CompatEntry {
+    group_idx: usize,
+    resources: [f64; 5],
+    max_per_machine: usize,
 }
+
+// ---------------------------------------------------------------------------
+// Data loading (reused from original)
+// ---------------------------------------------------------------------------
 
 fn load_vm_type_placements(conn: &Connection) -> Result<Vec<VmTypePlacement>, Box<dyn Error>> {
     let mut stmt = conn.prepare(
@@ -167,8 +141,6 @@ fn load_active_vm_type_counts(
     timestamp: f64,
     max_vms: Option<usize>,
 ) -> Result<(Vec<VmTypeGroup>, usize), Box<dyn Error>> {
-    // If max_vms is set, we need to load individual VMs first to truncate,
-    // then aggregate. Otherwise we can aggregate directly in SQL.
     if let Some(max) = max_vms {
         let mut stmt = conn.prepare(
             "SELECT vmTypeId FROM vm WHERE starttime <= ?1 AND (endtime IS NULL OR endtime > ?1)",
@@ -186,7 +158,12 @@ fn load_active_vm_type_counts(
             .into_iter()
             .map(|(vm_type_id, count)| VmTypeGroup { vm_type_id, count })
             .collect();
-        println!("  {} active VMs (truncated to {}), {} unique types", total, vm_types.len(), groups.len());
+        println!(
+            "  {} active VMs (truncated to {}), {} unique types",
+            total,
+            vm_types.len(),
+            groups.len()
+        );
         Ok((groups, vm_types.len()))
     } else {
         let mut stmt = conn.prepare(
@@ -208,6 +185,267 @@ fn load_active_vm_type_counts(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Master LP
+// ---------------------------------------------------------------------------
+
+struct MasterResult {
+    objective: f64,
+    duals: Vec<f64>,
+    lambdas: Vec<f64>,
+    status: HighsModelStatus,
+}
+
+fn solve_master_lp(
+    groups: &[VmTypeGroup],
+    patterns: &[Pattern],
+    verbose: bool,
+) -> MasterResult {
+    let mut pb = ColProblem::new();
+
+    // Covering constraints: Σ_p a_{g,p} · λ_p = count_g  for each group g
+    let rows: Vec<_> = groups
+        .iter()
+        .map(|g| {
+            let b = g.count as f64;
+            pb.add_row(b..=b)
+        })
+        .collect();
+
+    // Pattern columns (continuous): obj coeff = 1, lower bound = 0
+    for pattern in patterns {
+        let coeffs: Vec<_> = pattern
+            .items
+            .iter()
+            .map(|&(g_idx, count)| (rows[g_idx], count))
+            .collect();
+        pb.add_column(1.0, 0.0.., &coeffs);
+    }
+
+    let mut model = pb.optimise(Sense::Minimise);
+    if !verbose {
+        model.set_option("output_flag", false);
+    }
+    let solved = model.solve();
+    let solution = solved.get_solution();
+
+    MasterResult {
+        objective: solved.objective_value(),
+        duals: solution.dual_rows().to_vec(),
+        lambdas: solution.columns().to_vec(),
+        status: solved.status(),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pricing subproblem (one per machine type)
+// ---------------------------------------------------------------------------
+
+/// Greedy pricing heuristic: pack items by value density (π / max resource).
+/// Much faster than MIP (~microseconds vs ~40ms per call).
+/// Any feasible packing with profit > 1 is a valid improving column.
+/// Returns (Option<pattern>, greedy_profit).
+/// The pattern is Some only if profit > 1 + ε (improving column).
+/// The profit is always returned so we can decide whether MIP verification is worthwhile.
+fn solve_pricing_greedy(
+    machine_id: i64,
+    compat: &[CompatEntry],
+    duals: &[f64],
+) -> (Option<Pattern>, f64) {
+    if compat.is_empty() {
+        return (None, 0.0);
+    }
+
+    // Sort by value density = π_g / max resource dimension (descending)
+    let mut order: Vec<usize> = (0..compat.len())
+        .filter(|&i| duals[compat[i].group_idx] > 1e-12)
+        .collect();
+    order.sort_by(|&a, &b| {
+        let density_a = duals[compat[a].group_idx]
+            / compat[a].resources.iter().copied().fold(0.0_f64, f64::max).max(1e-12);
+        let density_b = duals[compat[b].group_idx]
+            / compat[b].resources.iter().copied().fold(0.0_f64, f64::max).max(1e-12);
+        density_b.partial_cmp(&density_a).unwrap()
+    });
+
+    let mut remaining = [1.0_f64; 5];
+    let mut items: Vec<(usize, f64)> = Vec::new();
+    let mut profit = 0.0_f64;
+
+    for &idx in &order {
+        let entry = &compat[idx];
+        let max_fit = (0..5)
+            .map(|d| {
+                if entry.resources[d] > 1e-12 {
+                    (remaining[d] / entry.resources[d]).floor() as usize
+                } else {
+                    usize::MAX
+                }
+            })
+            .min()
+            .unwrap_or(0)
+            .min(entry.max_per_machine);
+
+        if max_fit > 0 {
+            for d in 0..5 {
+                remaining[d] -= entry.resources[d] * max_fit as f64;
+            }
+            profit += duals[entry.group_idx] * max_fit as f64;
+            items.push((entry.group_idx, max_fit as f64));
+        }
+    }
+
+    if profit > 1.0 + 1e-6 && !items.is_empty() {
+        (Some(Pattern { machine_id, items }), profit)
+    } else {
+        (None, profit)
+    }
+}
+
+/// Tight upper bound on pricing via LP relaxation (continuous variables).
+/// If this is ≤ 1, no integer column can be improving → skip MIP.
+fn pricing_lp_bound(compat: &[CompatEntry], duals: &[f64]) -> f64 {
+    if compat.is_empty() {
+        return 0.0;
+    }
+    let mut pb = ColProblem::new();
+    let cap_rows: Vec<_> = (0..5).map(|_| pb.add_row(..=1.0)).collect();
+    for entry in compat {
+        let pi = duals[entry.group_idx];
+        let coeffs: Vec<_> = (0..5)
+            .map(|d| (cap_rows[d], entry.resources[d]))
+            .collect();
+        pb.add_column(pi, 0.0..=entry.max_per_machine as f64, &coeffs);
+    }
+    let mut model = pb.optimise(Sense::Maximise);
+    model.set_option("output_flag", false);
+    model.solve().objective_value()
+}
+
+/// Exact pricing via MIP (used only when LP relaxation says a column might exist).
+fn solve_pricing_exact(
+    machine_id: i64,
+    compat: &[CompatEntry],
+    duals: &[f64],
+) -> Option<(Pattern, f64)> {
+    if compat.is_empty() {
+        return None;
+    }
+
+    // Use LP relaxation as a tight filter
+    let ub = pricing_lp_bound(compat, duals);
+    if ub <= 1.0 + 1e-6 {
+        return None;
+    }
+
+    let mut pb = ColProblem::new();
+
+    // 5 capacity constraints: Σ_g res_d[g] · a_g ≤ 1.0
+    let cap_rows: Vec<_> = (0..5).map(|_| pb.add_row(..=1.0)).collect();
+
+    let mut group_indices: Vec<usize> = Vec::with_capacity(compat.len());
+    for entry in compat {
+        let pi = duals[entry.group_idx];
+        let coeffs: Vec<_> = (0..5)
+            .map(|d| (cap_rows[d], entry.resources[d]))
+            .collect();
+        pb.add_integer_column(pi, 0.0..=entry.max_per_machine as f64, &coeffs);
+        group_indices.push(entry.group_idx);
+    }
+
+    let mut model = pb.optimise(Sense::Maximise);
+    model.set_option("output_flag", false);
+    model.set_option("time_limit", 2.0);
+    let solved = model.solve();
+    let obj = solved.objective_value();
+
+    if obj > 1.0 + 1e-6 {
+        let solution = solved.get_solution();
+        let col_vals = solution.columns();
+        let items: Vec<(usize, f64)> = group_indices
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &g_idx)| {
+                let val: f64 = col_vals[i];
+                if val > 0.5 {
+                    Some((g_idx, val.round()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        if !items.is_empty() {
+            return Some((Pattern { machine_id, items }, obj - 1.0));
+        }
+    }
+    None
+}
+
+// ---------------------------------------------------------------------------
+// Restricted MIP (integer λ over generated columns)
+// ---------------------------------------------------------------------------
+
+fn solve_restricted_mip(
+    groups: &[VmTypeGroup],
+    patterns: &[Pattern],
+    lp_lambdas: &[f64],
+    time_limit: f64,
+    mip_gap: f64,
+    verbose: bool,
+    threads: Option<u32>,
+) -> MasterResult {
+    let mut pb = ColProblem::new();
+
+    // Covering constraints (≥): each group must be fully placed.
+    // We use ≥ instead of = here because with integer λ, exact equality
+    // may be infeasible (e.g. pattern packs 7 VMs but need exactly 100).
+    let rows: Vec<_> = groups
+        .iter()
+        .map(|g| pb.add_row(g.count as f64..))
+        .collect();
+
+    // Integer λ columns with upper bounds derived from LP solution
+    for (i, pattern) in patterns.iter().enumerate() {
+        let coeffs: Vec<_> = pattern
+            .items
+            .iter()
+            .map(|&(g_idx, count)| (rows[g_idx], count))
+            .collect();
+        // Upper bound: 2× the LP value (rounded up) + 1, to give solver room
+        let lp_val = if i < lp_lambdas.len() { lp_lambdas[i] } else { 0.0 };
+        let ub = (lp_val.ceil() as usize * 2 + 1).max(1);
+        pb.add_integer_column(1.0, 0.0..=ub as f64, &coeffs);
+    }
+
+    let mut model = pb.optimise(Sense::Minimise);
+    if !verbose {
+        model.set_option("output_flag", false);
+    }
+    if time_limit > 0.0 {
+        model.set_option("time_limit", time_limit);
+    }
+    if mip_gap > 0.0 {
+        model.set_option("mip_rel_gap", mip_gap);
+    }
+    if let Some(t) = threads {
+        model.set_option("threads", t as i32);
+    }
+
+    let solved = model.solve();
+    let solution = solved.get_solution();
+
+    MasterResult {
+        objective: solved.objective_value(),
+        duals: solution.dual_rows().to_vec(),
+        lambdas: solution.columns().to_vec(),
+        status: solved.status(),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// main
+// ---------------------------------------------------------------------------
+
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
@@ -227,224 +465,263 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
 
-    // -- Preprocessing --
+    // -- Preprocessing -------------------------------------------------------
 
-    // Group placements by vm_type_id
-    let mut placements_by_vm_type: HashMap<i64, Vec<VmTypePlacement>> = HashMap::new();
+    let n_groups = vm_type_groups.len();
+
+    let group_index: HashMap<i64, usize> = vm_type_groups
+        .iter()
+        .enumerate()
+        .map(|(i, g)| (g.vm_type_id, i))
+        .collect();
+
+    // Placements by vm_type_id
+    let mut placements_by_type: HashMap<i64, Vec<VmTypePlacement>> = HashMap::new();
     for p in &all_placements {
-        placements_by_vm_type
+        placements_by_type
             .entry(p.vm_type_id)
             .or_default()
             .push(p.clone());
     }
 
-    // Count VMs assignable to each machine type, collect reachable machine types
-    let mut vms_per_machine_type: HashMap<i64, usize> = HashMap::new();
-    for g in &vm_type_groups {
-        if let Some(placements) = placements_by_vm_type.get(&g.vm_type_id) {
-            for p in placements {
-                *vms_per_machine_type.entry(p.machine_id).or_default() += g.count;
+    // Reachable machine types
+    let machine_type_ids: Vec<i64> = {
+        let mut set = std::collections::HashSet::new();
+        for g in &vm_type_groups {
+            if let Some(ps) = placements_by_type.get(&g.vm_type_id) {
+                for p in ps {
+                    set.insert(p.machine_id);
+                }
+            }
+        }
+        let mut v: Vec<i64> = set.into_iter().collect();
+        v.sort();
+        v
+    };
+
+    // Compatibility map: machine_id → [CompatEntry]
+    let compat_by_machine: HashMap<i64, Vec<CompatEntry>> = {
+        let mut map: HashMap<i64, Vec<CompatEntry>> = HashMap::new();
+        for &t in &machine_type_ids {
+            let mut entries = Vec::new();
+            for g in &vm_type_groups {
+                if let Some(ps) = placements_by_type.get(&g.vm_type_id) {
+                    for p in ps {
+                        if p.machine_id == t {
+                            let res = p.resources();
+                            let max_per_dim = res
+                                .iter()
+                                .map(|&r| {
+                                    if r > 1e-12 {
+                                        (1.0 / r).floor() as usize
+                                    } else {
+                                        usize::MAX
+                                    }
+                                })
+                                .min()
+                                .unwrap_or(0);
+                            let max_a = max_per_dim.min(g.count);
+                            if max_a > 0 {
+                                entries.push(CompatEntry {
+                                    group_idx: group_index[&g.vm_type_id],
+                                    resources: res,
+                                    max_per_machine: max_a,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            if !entries.is_empty() {
+                map.insert(t, entries);
+            }
+        }
+        map
+    };
+
+    println!(
+        "{} VM type groups, {} reachable machine types, {} total VMs",
+        n_groups,
+        machine_type_ids.len(),
+        total_vms
+    );
+
+    // -- Initial columns -----------------------------------------------------
+    // For each group, create a trivial "pure" pattern (pack only this type).
+    let mut patterns: Vec<Pattern> = Vec::new();
+    for (g_idx, g) in vm_type_groups.iter().enumerate() {
+        if let Some(ps) = placements_by_type.get(&g.vm_type_id) {
+            if let Some(p) = ps.first() {
+                let res = p.resources();
+                let max_fit = res
+                    .iter()
+                    .map(|&r| {
+                        if r > 1e-12 {
+                            (1.0 / r).floor() as usize
+                        } else {
+                            usize::MAX
+                        }
+                    })
+                    .min()
+                    .unwrap_or(1)
+                    .max(1)
+                    .min(g.count);
+                patterns.push(Pattern {
+                    machine_id: p.machine_id,
+                    items: vec![(g_idx, max_fit as f64)],
+                });
             }
         }
     }
+    println!("Initial columns: {}", patterns.len());
 
-    let mut machine_type_ids: Vec<i64> = vms_per_machine_type.keys().copied().collect();
-    machine_type_ids.sort();
+    // -- Column generation ---------------------------------------------------
+    let cg_start = std::time::Instant::now();
+    let mut iteration = 0;
+    let mut lp_bound = 0.0_f64;
+    let mut lp_lambdas: Vec<f64> = Vec::new();
 
-    // Compute max instances per machine type (upper bound).
-    // Sum resource requirements of all active VMs assignable to each machine type,
-    // per dimension. ceil(max across dimensions) is a lower bound on machines needed.
-    let mut max_instances: HashMap<i64, usize> = HashMap::new();
-    for &t in &machine_type_ids {
-        let mut sum_core = 0.0_f64;
-        let mut sum_mem = 0.0_f64;
-        let mut sum_hdd = 0.0_f64;
-        let mut sum_ssd = 0.0_f64;
-        let mut sum_nic = 0.0_f64;
+    loop {
+        iteration += 1;
 
-        for g in &vm_type_groups {
-            if let Some(placements) = placements_by_vm_type.get(&g.vm_type_id) {
-                for p in placements {
-                    if p.machine_id == t {
-                        let c = g.count as f64;
-                        sum_core += p.core * c;
-                        sum_mem += p.memory * c;
-                        sum_hdd += p.hdd * c;
-                        sum_ssd += p.ssd * c;
-                        sum_nic += p.nic * c;
+        let master = solve_master_lp(&vm_type_groups, &patterns, args.verbose);
+
+        if master.status != HighsModelStatus::Optimal {
+            eprintln!(
+                "Master LP not optimal (status {:?}) at iteration {}",
+                master.status, iteration
+            );
+            break;
+        }
+
+        lp_bound = master.objective;
+        lp_lambdas = master.lambdas;
+
+        // Phase 1: greedy pricing (fast — microseconds per machine type)
+        let mut new_patterns: Vec<Pattern> = Vec::new();
+        let mut best_rc = 0.0_f64;
+
+        for &t in &machine_type_ids {
+            if let Some(compat) = compat_by_machine.get(&t) {
+                let (pattern, profit) =
+                    solve_pricing_greedy(t, compat, &master.duals);
+                if let Some(p) = pattern {
+                    best_rc = best_rc.max(profit - 1.0);
+                    new_patterns.push(p);
+                }
+            }
+        }
+
+        // Phase 2: if greedy found nothing, verify with exact MIP pricing.
+        // The LP relaxation filter (inside solve_pricing_exact) eliminates
+        // machine types where no integer column can possibly be improving.
+        if new_patterns.is_empty() {
+            for &t in &machine_type_ids {
+                if let Some(compat) = compat_by_machine.get(&t) {
+                    if let Some((pattern, rc)) =
+                        solve_pricing_exact(t, compat, &master.duals)
+                    {
+                        best_rc = best_rc.max(rc);
+                        new_patterns.push(pattern);
                     }
                 }
             }
         }
 
-        let max_sum = sum_core.max(sum_mem).max(sum_hdd).max(sum_ssd).max(sum_nic);
-        let bound = max_sum.ceil().max(1.0) as usize;
-        max_instances.insert(t, bound);
-    }
-
-    println!("Machine types in use: {}", machine_type_ids.len());
-    for &t in &machine_type_ids {
-        println!(
-            "  type {}: {} assignable VMs, max {} instances",
-            t, vms_per_machine_type[&t], max_instances[&t]
-        );
-    }
-
-    // -- MIP construction --
-
-    let mut vars = ProblemVariables::new();
-
-    // y[t][j] variables
-    let mut y: HashMap<i64, Vec<good_lp::Variable>> = HashMap::new();
-    for &t in &machine_type_ids {
-        let max_j = max_instances[&t];
-        let y_vec: Vec<good_lp::Variable> = (0..max_j)
-            .map(|_| vars.add(variable().binary()))
-            .collect();
-        y.insert(t, y_vec);
-    }
-
-    // n[g][...] variables per VM type group
-    let bar = progress_bar(vm_type_groups.len() as u64, "Creating n variables");
-    let mut n_by_group: Vec<Vec<NEntry>> = Vec::with_capacity(vm_type_groups.len());
-    for g in &vm_type_groups {
-        bar.inc(1);
-        let mut entries = Vec::new();
-        if let Some(placements) = placements_by_vm_type.get(&g.vm_type_id) {
-            for placement in placements {
-                let t = placement.machine_id;
-                let max_j = max_instances[&t];
-                for j in 0..max_j {
-                    let var = vars.add(variable().integer().min(0).max(g.count as f64));
-                    entries.push(NEntry {
-                        machine_id: t,
-                        instance_j: j,
-                        var,
-                        placement: placement.clone(),
-                    });
-                }
-            }
+        if iteration % 100 == 1 || new_patterns.is_empty() {
+            println!(
+                "  iter {:>4}: LP = {:>12.4}, cols = {:>5}, new = {:>2}, best_rc = {:.6}",
+                iteration,
+                master.objective,
+                patterns.len(),
+                new_patterns.len(),
+                best_rc
+            );
         }
-        n_by_group.push(entries);
-    }
-    bar.finish_and_clear();
 
-    let total_n: usize = n_by_group.iter().map(|e| e.len()).sum();
-    let total_y: usize = y.values().map(|v| v.len()).sum();
-    println!("MIP variables: {} n + {} y = {} total", total_n, total_y, total_n + total_y);
-
-    // Objective: minimize sum of all y
-    let mut objective = Expression::with_capacity(total_y);
-    for y_vec in y.values() {
-        for &y_tj in y_vec {
-            objective += y_tj;
+        if new_patterns.is_empty() {
+            break;
         }
+
+        patterns.extend(new_patterns);
     }
 
-    let mut model = vars.minimise(objective).using(highs);
-    if args.verbose {
-        model.set_verbose(true);
+    let cg_time = cg_start.elapsed();
+    println!(
+        "\nColumn generation converged: {} iterations, {:.3}s",
+        iteration,
+        cg_time.as_secs_f64()
+    );
+    println!(
+        "LP lower bound: {:.4}  (ceil = {})",
+        lp_bound,
+        lp_bound.ceil() as usize
+    );
+    println!("Generated columns: {}", patterns.len());
+
+    // -- Restricted MIP ------------------------------------------------------
+    println!(
+        "\nSolving restricted MIP ({} cols, {} groups)...",
+        patterns.len(),
+        n_groups
+    );
+    let mip_start = std::time::Instant::now();
+    let mip = solve_restricted_mip(
+        &vm_type_groups,
+        &patterns,
+        &lp_lambdas,
+        args.time_limit,
+        args.mip_gap,
+        args.verbose,
+        args.threads,
+    );
+    let mip_time = mip_start.elapsed();
+
+    // -- Results -------------------------------------------------------------
+    if mip.status != HighsModelStatus::Optimal
+        && mip.status != HighsModelStatus::ObjectiveBound
+        && mip.status != HighsModelStatus::ReachedTimeLimit
+    {
+        eprintln!("Restricted MIP status: {:?}", mip.status);
+        eprintln!("This may require more columns or branch-and-price.");
+        return Ok(());
     }
-    if args.time_limit > 0.0 {
-        model = model.set_time_limit(args.time_limit);
-    }
-    if args.mip_gap > 0.0 {
-        model = model.set_mip_rel_gap(args.mip_gap)?;
-    }
-    if let Some(threads) = args.threads {
-        model = model.set_threads(threads);
-    }
-
-    // Constraint 1: each VM type group fully assigned
-    let bar = progress_bar(vm_type_groups.len() as u64, "Assignment constraints");
-    for (g_idx, g) in vm_type_groups.iter().enumerate() {
-        bar.inc(1);
-        let sum: Expression = n_by_group[g_idx].iter().map(|e| e.var).sum();
-        model.add_constraint(sum.eq(g.count as i32));
-    }
-    bar.finish_and_clear();
-
-    // Pre-index: (machine_id, j) -> list of (group_idx, entry_idx)
-    let mut entries_by_instance: HashMap<(i64, usize), Vec<(usize, usize)>> = HashMap::new();
-    for (g_idx, entries) in n_by_group.iter().enumerate() {
-        for (e_idx, entry) in entries.iter().enumerate() {
-            entries_by_instance
-                .entry((entry.machine_id, entry.instance_j))
-                .or_default()
-                .push((g_idx, e_idx));
-        }
-    }
-
-    // Constraint 2: capacity per dimension per (t, j)
-    let total_instances: usize = max_instances.values().sum();
-    let bar = progress_bar((total_instances * 5) as u64, "Capacity constraints");
-    for &t in &machine_type_ids {
-        let max_j = max_instances[&t];
-        let y_vec = &y[&t];
-
-        for j in 0..max_j {
-            let mut core_expr = Expression::default();
-            let mut mem_expr = Expression::default();
-            let mut hdd_expr = Expression::default();
-            let mut ssd_expr = Expression::default();
-            let mut nic_expr = Expression::default();
-
-            if let Some(instance_entries) = entries_by_instance.get(&(t, j)) {
-                for &(g_idx, e_idx) in instance_entries {
-                    let entry = &n_by_group[g_idx][e_idx];
-                    core_expr.add_mul(entry.placement.core, entry.var);
-                    mem_expr.add_mul(entry.placement.memory, entry.var);
-                    hdd_expr.add_mul(entry.placement.hdd, entry.var);
-                    ssd_expr.add_mul(entry.placement.ssd, entry.var);
-                    nic_expr.add_mul(entry.placement.nic, entry.var);
-                }
-            }
-
-            let y_tj = y_vec[j];
-            model.add_constraint(core_expr.leq(y_tj));
-            model.add_constraint(mem_expr.leq(y_tj));
-            model.add_constraint(hdd_expr.leq(y_tj));
-            model.add_constraint(ssd_expr.leq(y_tj));
-            model.add_constraint(nic_expr.leq(y_tj));
-            bar.inc(5);
-        }
-    }
-    bar.finish_and_clear();
-
-    // Constraint 3: symmetry breaking y[t][j] <= y[t][j-1]
-    for &t in &machine_type_ids {
-        let y_vec = &y[&t];
-        for j in 1..y_vec.len() {
-            model.add_constraint(Expression::from(y_vec[j]).leq(y_vec[j - 1]));
-        }
-    }
-
-    // -- Solve --
-    println!("Solving ({} VMs, {} types, {} vars)...", total_vms, vm_type_groups.len(), total_n + total_y);
-    let solve_start = std::time::Instant::now();
-    let solution = model.solve()?;
-    let solve_time = solve_start.elapsed();
-
-    // -- Extract results --
-    let mut total_machines = 0usize;
-    let mut machines_by_type: Vec<(i64, usize)> = Vec::new();
-
-    for &t in &machine_type_ids {
-        let y_vec = &y[&t];
-        let count = y_vec.iter().filter(|&&v| solution.value(v) > 0.5).count();
-        if count > 0 {
-            machines_by_type.push((t, count));
-            total_machines += count;
-        }
-    }
+    let total_machines = mip.objective.round() as usize;
+    let lp_ceil = lp_bound.ceil() as usize;
 
     println!("\n=== Result ===");
     println!("Total machines: {}", total_machines);
-    println!("Status: {:?}", solution.status());
-    println!("Solve time: {:.3}s", solve_time.as_secs_f64());
+    println!("LP lower bound: {:.4}  (ceil = {})", lp_bound, lp_ceil);
+    if total_machines == lp_ceil {
+        println!("Optimality: PROVEN OPTIMAL");
+    } else {
+        println!(
+            "Optimality: gap = {} machines (branch-and-price may be needed)",
+            total_machines - lp_ceil
+        );
+    }
+    println!("MIP status: {:?}", mip.status);
+    println!(
+        "Solve time: CG {:.3}s + MIP {:.3}s = {:.3}s total",
+        cg_time.as_secs_f64(),
+        mip_time.as_secs_f64(),
+        (cg_time + mip_time).as_secs_f64()
+    );
+
+    // Per machine type breakdown
+    let mut machines_by_type: HashMap<i64, usize> = HashMap::new();
+    for (p_idx, &lambda) in mip.lambdas.iter().enumerate() {
+        if lambda > 0.5 {
+            *machines_by_type
+                .entry(patterns[p_idx].machine_id)
+                .or_default() += lambda.round() as usize;
+        }
+    }
+    let mut type_counts: Vec<(i64, usize)> = machines_by_type.into_iter().collect();
+    type_counts.sort_by_key(|&(t, _)| t);
     println!("\nBy machine type:");
-    for (machine_id, count) in &machines_by_type {
-        println!("  machine type {}: {} instances", machine_id, count);
+    for (t, count) in &type_counts {
+        println!("  type {:>2}: {} instances", t, count);
     }
 
     Ok(())

@@ -154,10 +154,11 @@ fn load_active_vm_type_counts(
         for vt in &vm_types {
             *counts.entry(*vt).or_default() += 1;
         }
-        let groups: Vec<VmTypeGroup> = counts
+        let mut groups: Vec<VmTypeGroup> = counts
             .into_iter()
             .map(|(vm_type_id, count)| VmTypeGroup { vm_type_id, count })
             .collect();
+        groups.sort_by_key(|g| g.vm_type_id);
         println!(
             "  {} active VMs (truncated to {}), {} unique types",
             total,
@@ -391,7 +392,6 @@ fn solve_restricted_mip(
     lp_lambdas: &[f64],
     time_limit: f64,
     mip_gap: f64,
-    verbose: bool,
     threads: Option<u32>,
 ) -> MasterResult {
     let mut pb = ColProblem::new();
@@ -418,9 +418,9 @@ fn solve_restricted_mip(
     }
 
     let mut model = pb.optimise(Sense::Minimise);
-    if !verbose {
-        model.set_option("output_flag", false);
-    }
+    model.set_option("output_flag", true);
+    model.set_option("log_to_console", true);
+    model.set_option("random_seed", 42 as i32);
     if time_limit > 0.0 {
         model.set_option("time_limit", time_limit);
     }
@@ -672,7 +672,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         &lp_lambdas,
         args.time_limit,
         args.mip_gap,
-        args.verbose,
         args.threads,
     );
     let mip_time = mip_start.elapsed();

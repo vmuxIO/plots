@@ -402,6 +402,38 @@ def plot_utilization(df):
         weight="bold",
     )
 
+    # Annotate the decrease in NIC stranding from Fragmented to Unified
+    nic_means = df[df["resource"] == "NIC"].groupby("Pool")["stranding"].mean()
+    nic_frag = float(nic_means["Fragmented"])
+    nic_unif = float(nic_means["Unified"])
+    nic_decrease = nic_frag - nic_unif
+    # locate the two NIC bars (NIC is the 4th category, tick at x=3)
+    nic_bars = sorted(
+        [b for b in g.patches
+         if abs((b.get_x() + b.get_width() / 2) - 3) < 0.5 and b.get_height() > 0],
+        key=lambda b: b.get_x(),
+    )
+    frag_bar, unif_bar = nic_bars[0], nic_bars[1]
+    frag_cx = frag_bar.get_x() + frag_bar.get_width() / 2
+    unif_cx = unif_bar.get_x() + unif_bar.get_width() / 2
+    # diagonal, arced arrow hovering above the bars, pointing to the (lower)
+    # Unified bar, with the decrease labelled next to the arrow's line
+    arrow_start = (frag_cx, frag_bar.get_height() + 10)
+    arrow_end = (unif_cx, unif_bar.get_height() + 2)
+    g.annotate(
+        "",
+        xy=arrow_end,
+        xytext=arrow_start,
+        arrowprops=dict(arrowstyle="->", color="navy", lw=1.5,
+                        connectionstyle="arc3,rad=-0.6"),
+    )
+    g.text(
+        (arrow_start[0] + arrow_end[0]) / 2 + 0.10,
+        (arrow_start[1] + arrow_end[1]) / 2 + 15,
+        f"-{nic_decrease:.0f}%",
+        ha="center", va="bottom", color="navy", weight="bold",
+    )
+
     g.set(ylim=(0, 100))
     plt.tight_layout(pad=0.1)
     plt.savefig(f"{args.output.name}")
